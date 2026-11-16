@@ -1,6 +1,6 @@
 // TripFlow service worker: makes the app open offline and keeps
 // map tiles you've already seen available without signal.
-const VERSION = "tripflow-v2";
+const VERSION = "tripflow-v3";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 const LIBS = [
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",

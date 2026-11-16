@@ -196,6 +196,7 @@ input,textarea,select{font:inherit;color:inherit}
 .loc-name{font-weight:600}
 .mini-map{height:150px;position:relative}
 .thumbs{display:flex;gap:10px;overflow-x:auto;padding:12px 16px;position:relative}
+.thumbs[hidden]{display:none}
 .thumb{position:relative;flex:none;width:92px;height:92px;border-radius:10px;overflow:hidden;background:var(--card2)}
 .thumb img{width:100%;height:100%;object-fit:cover}
 .thumb-x{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:12px;background:rgba(0,0,0,.6);color:#fff;display:grid;place-items:center}
@@ -226,6 +227,27 @@ input,textarea,select{font:inherit;color:inherit}
 .toast .t-text b{display:block}
 .toast .t-btn{color:var(--accent);font-weight:600;font-size:15px;white-space:nowrap}
 .toast .t-icon{width:36px;height:36px;border-radius:10px;background:var(--orange);color:#fff;display:grid;place-items:center;flex:none}
+.guide-row{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;position:relative}
+.guide-row+.guide-row::before{content:"";position:absolute;left:16px;right:0;top:0;border-top:.5px solid var(--sep)}
+.guide-thumb{width:58px;height:58px;border-radius:9px;object-fit:cover;background:var(--card2);flex:none}
+.guide-cap{flex:1;min-width:0;border:0;background:var(--card2);border-radius:9px;padding:9px 11px;font-size:16px;outline:none}
+.guide-x{width:30px;height:30px;border-radius:15px;display:grid;place-items:center;color:var(--muted);flex:none}
+.guide-x .ic{width:16px;height:16px;stroke-width:2.6}
+#pGuides:empty{display:none}
+.gv{position:fixed;inset:0;z-index:100;background:#000;color:#fff;display:flex;flex-direction:column}
+.gv .sheet-head{background:#000;border-color:#222;color:#fff}
+.gv .text-btn{color:#4da3ff}
+.gv-pages{flex:1;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;min-height:0}
+.gv-pages::-webkit-scrollbar{display:none}
+.gv-page{flex:0 0 100%;width:100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:pan-x;position:relative}
+.gv-page img{max-width:100%;max-height:100%;transform-origin:0 0;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;will-change:transform}
+.gv-foot{padding:10px 16px calc(var(--sab) + 12px);display:flex;flex-direction:column;align-items:center;gap:10px}
+.gv-caption{font-size:16px;text-align:center;min-height:20px}
+.gv-seen{display:inline-flex;gap:6px;align-items:center;padding:9px 16px;border-radius:20px;background:#2c2c2e;color:#fff;font-weight:600;font-size:15px}
+.gv-seen.on{background:#30d158}
+.gv-seen .ic{width:18px;height:18px}
+.gv-hint{font-size:12px;color:#8e8e93}
+.gv .qr-dots i{background:#48484a}.gv .qr-dots i.on{background:#fff}
 .qr-view{position:fixed;inset:0;z-index:100;background:#fff;color:#000;display:flex;flex-direction:column}
 .qr-view .sheet-head{background:#fff;border-color:#e5e5ea;color:#000}
 .qr-pages{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
@@ -324,6 +346,14 @@ input,textarea,select{font:inherit;color:inherit}
     </div>
     <div class="group-foot">Pick screenshots of your booking QR codes. They open full screen, ready to scan.</div>
 
+    <div class="group-label">Tour Guide Notes</div>
+    <div class="group">
+      <div id="pGuides"></div>
+      <label class="row link-row"><span data-icon="map"></span><span id="addGuideLabel">Add a map or photo</span>
+        <input type="file" id="pGuideFiles" accept="image/*" multiple hidden></label>
+    </div>
+    <div class="group-foot">Add venue maps (museum, zoo, park) and photos of things you want to find, like paintings. Add a note to each, e.g. "Room 34". Tap them on the plan to open full screen, pinch to zoom, and tick them off as you see them.</div>
+
     <div id="pDeleteGroup" style="margin-top:28px" class="group"><button class="row danger" id="pDelete">Delete plan</button></div>
   </div>
 </div>
@@ -373,6 +403,21 @@ input,textarea,select{font:inherit;color:inherit}
   <div class="qr-hint">Tip: turn your screen brightness up for scanning. The screen stays awake while this is open.</div>
 </div>
 
+<div class="gv hidden" id="guideView">
+  <header class="sheet-head">
+    <span style="min-width:72px"></span>
+    <div class="sheet-title" id="gvTitle"></div>
+    <button class="text-btn bold" id="gvDone" style="justify-content:flex-end;min-width:72px">Done</button>
+  </header>
+  <div class="gv-pages" id="gvPages"></div>
+  <div class="gv-foot">
+    <div class="gv-caption" id="gvCaption"></div>
+    <button class="gv-seen" id="gvSeen"></button>
+    <div class="qr-dots" id="gvDots"></div>
+    <div class="gv-hint">Pinch or double-tap to zoom</div>
+  </div>
+</div>
+
 <div class="action-backdrop hidden" id="actionSheet">
   <div class="action-panel"><div class="action-list" id="actionList"></div><button class="action-cancel" id="actionCancel">Cancel</button></div>
 </div>
@@ -411,6 +456,8 @@ const ICON = {
   x: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
   suitcase: svg('<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>'),
   plane: svg('<path d="M10.5 21l1.5-1 1.5 1v-4l7-3v-2l-7 1V5.5a1.5 1.5 0 0 0-3 0V13l-7-1v2l7 3z"/>'),
+  map: svg('<path d="M9 4L3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/>'),
+  eye: svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
   chev: svg('<path d="M9 6l6 6-6 6"/>'),
   share: svg('<path d="M12 3v12M7.5 7.5L12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>'),
 };
@@ -471,12 +518,13 @@ async function imgURL(id) {
   try { const blob = await DB.get("images", id); if (!blob) return ""; const u = URL.createObjectURL(blob); imgCache.set(id, u); return u; } catch { return ""; }
 }
 function deleteImage(id) { if (imgCache.has(id)) { URL.revokeObjectURL(imgCache.get(id)); imgCache.delete(id); } DB.del("images", id).catch(() => {}); }
-async function compressImage(file) {
+const itemImageIds = it => [...it.images, ...(it.guides || []).map(g => g.id)];
+async function compressImage(file, max = 1600) {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-    const max = 1600, scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
-    if (scale === 1 && file.size < 1.2e6) return file;
+    const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    if (scale === 1 && file.size < (max > 1600 ? 3e6 : 1.2e6)) return file;
     const c = document.createElement("canvas");
     c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
     const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
@@ -513,7 +561,7 @@ $("#actionSheet").addEventListener("click", e => { if (e.target.id === "actionSh
 function openSheet(sel) { $(sel).classList.add("open"); }
 function closeSheet(sel) {
   $(sel).classList.remove("open"); document.activeElement?.blur?.();
-  if (sel === "#planSheet" && ed && !ed.saved) { ed.images.filter(id => !ed.original.includes(id)).forEach(deleteImage); ed.saved = true; }
+  if (sel === "#planSheet" && ed && !ed.saved) { edAllIds().filter(id => !ed.originalAll.includes(id)).forEach(deleteImage); ed.saved = true; }
 }
 document.addEventListener("click", e => { const c = e.target.closest("[data-close]"); if (c) closeSheet("#" + c.closest(".sheet").id); });
 
@@ -593,7 +641,7 @@ $("#tripSave").onclick = () => {
   if (trip) {
     trip.name = name; trip.start = start;
     if (tripEd.count < trip.days.length) {
-      trip.days.splice(tripEd.count).forEach(d => d.items.forEach(it => it.images.forEach(deleteImage)));
+      trip.days.splice(tripEd.count).forEach(d => d.items.forEach(it => itemImageIds(it).forEach(deleteImage)));
     } else while (trip.days.length < tripEd.count) trip.days.push(newDay());
     save(); closeSheet("#tripSheet");
     current.dayIndex = Math.min(current.dayIndex, trip.days.length - 1);
@@ -662,7 +710,7 @@ function dayPageHTML(trip, i) {
   </div>`;
 }
 function planHTML(di, it, k) {
-  const qrs = it.images.length;
+  const qrs = it.images.length, guides = it.guides || [], seen = guides.filter(g => g.seen).length;
   return `<div class="plan ${it.done ? "is-done" : ""}" data-id="${it.id}" data-day="${di}">
     <button class="num ${it.done ? "done" : ""}" data-action="toggle" aria-label="Mark done">${it.done ? ICON.check : k + 1}</button>
     <div class="plan-body" data-action="edit">
@@ -670,7 +718,7 @@ function planHTML(di, it, k) {
         ${it.time ? `<span class="time-badge">${it.remind != null ? ICON.bell : ""}${fmtTime(it.time)}</span>` : ""}</div>
       ${it.loc ? `<div class="plan-meta">${ICON.pin}<span>${esc(it.loc.name)}</span></div>` : ""}
       ${it.notes ? `<div class="plan-notes">${esc(it.notes)}</div>` : ""}
-      <div class="plan-actions">${qrs ? `<button class="chip-btn" data-action="qr">${ICON.qr} ${qrs > 1 ? `Show ${qrs} QR codes` : "Show QR code"}</button>` : ""}${it.loc ? `<button class="chip-btn" data-action="go">${ICON.nav} Directions</button>` : ""}</div>
+      <div class="plan-actions">${qrs ? `<button class="chip-btn" data-action="qr">${ICON.qr} ${qrs > 1 ? `Show ${qrs} QR codes` : "Show QR code"}</button>` : ""}${guides.length ? `<button class="chip-btn" data-action="guide">${ICON.map} Tour Guide Notes (${seen ? `${seen}/${guides.length} seen` : guides.length})</button>` : ""}${it.loc ? `<button class="chip-btn" data-action="go">${ICON.nav} Directions</button>` : ""}</div>
     </div>
     <div class="grip" aria-label="Drag to reorder">${ICON.grip}</div>
   </div>`;
@@ -740,6 +788,7 @@ pagesEl.addEventListener("click", e => {
     case "edit": openPlanEditor(di, item); break;
     case "toggle": item.done = !item.done; save(); renderPage(di); updateMap(false); break;
     case "qr": openQR(item); break;
+    case "guide": openGuides(item); break;
     case "go": openDirections(item); break;
   }
 });
@@ -764,7 +813,7 @@ function sortTimedPlans() {
 }
 function deleteTrip(trip) {
   if (!confirm(`Delete "${trip.name}" and all its plans?`)) return;
-  trip.days.forEach(d => d.items.forEach(it => it.images.forEach(deleteImage)));
+  trip.days.forEach(d => d.items.forEach(it => itemImageIds(it).forEach(deleteImage)));
   state.trips = state.trips.filter(t => t.id !== trip.id); save(); closeTrip();
 }
 
@@ -773,13 +822,15 @@ function deleteTrip(trip) {
    ===================================================================== */
 let ed = null, miniMap = null;
 function openPlanEditor(di, item) {
-  ed = { di, item, loc: item?.loc ? { ...item.loc } : null, images: item ? [...item.images] : [], original: item ? [...item.images] : [], saved: false };
+  ed = { di, item, loc: item?.loc ? { ...item.loc } : null, images: item ? [...item.images] : [], original: item ? [...item.images] : [],
+    guides: (item?.guides || []).map(g => ({ ...g })), saved: false };
+  ed.originalAll = edAllIds();
   $("#planSheetTitle").textContent = item ? "Edit Plan" : "New Plan";
   $("#pTitle").value = item?.title || ""; $("#pNotes").value = item?.notes || "";
   $("#pHasTime").checked = !!item?.time; $("#pTime").value = item?.time || "09:00";
   $("#pRemind").value = item?.remind != null ? String(item.remind) : "";
   $("#pDeleteGroup").classList.toggle("hidden", !item);
-  updateTimeRows(); renderLocGroup(); renderThumbs();
+  updateTimeRows(); renderLocGroup(); renderThumbs(); renderGuides();
   $(".sheet-body", $("#planSheet")).scrollTop = 0;
   openSheet("#planSheet");
 }
@@ -838,6 +889,31 @@ $("#pFiles").addEventListener("change", async e => {
   }
   renderThumbs();
 });
+function edAllIds() { return [...ed.images, ...ed.guides.map(g => g.id)]; }
+async function renderGuides() {
+  const box = $("#pGuides");
+  $("#addGuideLabel").textContent = ed.guides.length ? "Add another" : "Add a map or photo";
+  const urls = await Promise.all(ed.guides.map(g => imgURL(g.id)));
+  box.innerHTML = ed.guides.map((g, i) => `<div class="guide-row"><img class="guide-thumb" src="${urls[i]}" alt="">
+    <input class="guide-cap" data-gcap="${i}" value="${esc(g.caption)}" placeholder="Note, e.g. Room 34 or Level 2" enterkeyhint="done">
+    <button class="guide-x" data-grm="${g.id}" aria-label="Remove">${ICON.x}</button></div>`).join("");
+}
+$("#pGuides").addEventListener("input", e => { const inp = e.target.closest("[data-gcap]"); if (inp) ed.guides[+inp.dataset.gcap].caption = inp.value; });
+$("#pGuides").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("[data-gcap]")) e.target.blur(); });
+$("#pGuides").addEventListener("click", e => {
+  const b = e.target.closest("[data-grm]"); if (!b) return;
+  const id = b.dataset.grm; ed.guides = ed.guides.filter(g => g.id !== id);
+  if (!ed.originalAll.includes(id)) deleteImage(id);
+  renderGuides();
+});
+$("#pGuideFiles").addEventListener("change", async e => {
+  const files = [...e.target.files]; e.target.value = "";
+  for (const f of files) {
+    try { const blob = await compressImage(f, 3200); const id = "img_" + uid(); await DB.put("images", id, blob); ed.guides.push({ id, caption: "", seen: false }); }
+    catch { toast("<b>Couldn't add that image</b>"); }
+  }
+  renderGuides();
+});
 function savePlan(thenCalendar = false) {
   const title = $("#pTitle").value.trim();
   if (!title) { $("#pTitle").focus(); toast("<b>Give the plan a name</b>"); return; }
@@ -849,8 +925,9 @@ function savePlan(thenCalendar = false) {
   item.time = hasTime ? ($("#pTime").value || "09:00") : null;
   const r = $("#pRemind").value; item.remind = hasTime && r !== "" ? +r : null;
   item.loc = ed.loc;
-  ed.original.filter(id => !ed.images.includes(id)).forEach(deleteImage);
+  ed.originalAll.filter(id => !edAllIds().includes(id)).forEach(deleteImage);
   item.images = [...ed.images];
+  item.guides = ed.guides.map(g => ({ ...g, caption: g.caption.trim() }));
   if (!ed.item) day.items.push(item);
   ed.saved = true; save(); closeSheet("#planSheet"); renderPage(ed.di); updateMap(false);
   const entry = { trip, di: ed.di, item };
@@ -864,7 +941,7 @@ $("#pDelete").onclick = () => {
   if (!confirm("Delete this plan?")) return;
   const day = currentTrip().days[ed.di];
   day.items = day.items.filter(x => x.id !== ed.item.id);
-  [...new Set([...ed.images, ...ed.original])].forEach(deleteImage);
+  [...new Set([...edAllIds(), ...ed.originalAll])].forEach(deleteImage);
   ed.saved = true; save(); closeSheet("#planSheet"); renderPage(ed.di); updateMap(false);
 };
 
@@ -1114,6 +1191,113 @@ $("#qrPages").addEventListener("scroll", () => {
 $("#qrDone").onclick = () => { $("#qrView").classList.add("hidden"); wakeLock?.release?.().catch(() => {}); wakeLock = null; };
 
 /* =====================================================================
+   TOUR GUIDE NOTES VIEWER (pinch / double-tap zoom)
+   ===================================================================== */
+let gvItem = null, gvIndex = 0;
+const zoom = { s: 1, x: 0, y: 0, img: null, pts: new Map(), pinch: null, pan: null, lastTap: 0 };
+async function openGuides(item, start = 0) {
+  gvItem = item; gvIndex = start;
+  const urls = await Promise.all(item.guides.map(g => imgURL(g.id)));
+  $("#gvTitle").textContent = item.title;
+  $("#gvPages").innerHTML = urls.map(u => `<div class="gv-page"><img src="${u}" alt="" draggable="false"></div>`).join("");
+  $("#gvDots").innerHTML = urls.length > 1 ? urls.map(() => "<i></i>").join("") : "";
+  $("#guideView").classList.remove("hidden");
+  $("#gvPages").scrollLeft = start * $("#gvPages").clientWidth;
+  updateGuideFoot();
+  try { wakeLock = await navigator.wakeLock?.request("screen"); } catch {}
+}
+function updateGuideFoot() {
+  const g = gvItem.guides[gvIndex]; if (!g) return;
+  $("#gvCaption").textContent = g.caption || (gvItem.guides.length > 1 ? `${gvIndex + 1} of ${gvItem.guides.length}` : "");
+  const b = $("#gvSeen"); b.classList.toggle("on", !!g.seen);
+  b.innerHTML = g.seen ? `${ICON.check} Seen` : `${ICON.eye} Mark as seen`;
+  $$("#gvDots i").forEach((d, k) => d.classList.toggle("on", k === gvIndex));
+}
+$("#gvSeen").onclick = () => {
+  const g = gvItem.guides[gvIndex]; g.seen = !g.seen; save(); updateGuideFoot();
+  if (g.seen) navigator.vibrate?.(20);
+};
+$("#gvDone").onclick = () => {
+  resetZoom(); $("#guideView").classList.add("hidden");
+  wakeLock?.release?.().catch(() => {}); wakeLock = null;
+  if (current.tripId) { const di = currentTrip().days.findIndex(d => d.items.includes(gvItem)); if (di >= 0) renderPage(di); }
+};
+$("#gvPages").addEventListener("scroll", () => {
+  const p = $("#gvPages"), i = Math.round(p.scrollLeft / p.clientWidth);
+  if (i !== gvIndex && i >= 0 && i < (gvItem?.guides.length || 0)) { gvIndex = i; resetZoom(); updateGuideFoot(); }
+}, { passive: true });
+
+function applyZoom() {
+  const img = zoom.img; if (!img) return;
+  img.style.transform = `translate(${zoom.x}px,${zoom.y}px) scale(${zoom.s})`;
+  const zoomed = zoom.s > 1.01;
+  img.parentElement.style.touchAction = zoomed ? "none" : "pan-x";
+  $("#gvPages").style.overflowX = zoomed ? "hidden" : "auto";
+}
+function resetZoom() {
+  if (zoom.img) { zoom.img.style.transition = "transform .2s"; zoom.s = 1; zoom.x = 0; zoom.y = 0; applyZoom(); const im = zoom.img; setTimeout(() => im.style.transition = "", 220); }
+  zoom.pts.clear(); zoom.pinch = null; zoom.pan = null;
+}
+function clampPan() {
+  const w = zoom.img.offsetWidth, h = zoom.img.offsetHeight;
+  zoom.x = clamp(zoom.x, w * (1 - zoom.s), 0); zoom.y = clamp(zoom.y, h * (1 - zoom.s), 0);
+}
+// a point on screen -> coordinates inside the un-zoomed image box
+function localPoint(cx, cy) { const r = zoom.img.parentElement.getBoundingClientRect(); return [cx - r.left - zoom.img.offsetLeft, cy - r.top - zoom.img.offsetTop]; }
+function zoomAround(px, py, newS) {
+  const cx = (px - zoom.x) / zoom.s, cy = (py - zoom.y) / zoom.s;
+  zoom.s = newS; zoom.x = px - cx * newS; zoom.y = py - cy * newS; clampPan(); applyZoom();
+}
+const gvPages = $("#gvPages");
+gvPages.addEventListener("pointerdown", e => {
+  const img = e.target.closest(".gv-page")?.querySelector("img"); if (!img) return;
+  if (zoom.img !== img) { if (zoom.img) resetZoom(); zoom.img = img; }
+  zoom.pts.set(e.pointerId, [e.clientX, e.clientY]);
+  if (zoom.pts.size === 2) {
+    const [a, b] = [...zoom.pts.values()];
+    zoom.pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), s: zoom.s, x: zoom.x, y: zoom.y, mid: localPoint((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) };
+    zoom.pan = null;
+  } else if (zoom.pts.size === 1 && zoom.s > 1.01) {
+    zoom.pan = { x: e.clientX, y: e.clientY, ox: zoom.x, oy: zoom.y };
+    try { gvPages.setPointerCapture(e.pointerId); } catch {}
+  }
+});
+gvPages.addEventListener("pointermove", e => {
+  if (!zoom.pts.has(e.pointerId)) return;
+  zoom.pts.set(e.pointerId, [e.clientX, e.clientY]);
+  if (zoom.pinch && zoom.pts.size >= 2) {
+    e.preventDefault();
+    const [a, b] = [...zoom.pts.values()];
+    const s = clamp(zoom.pinch.s * Math.hypot(a[0] - b[0], a[1] - b[1]) / zoom.pinch.d, 1, 6);
+    const mid = localPoint((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    const cx = (zoom.pinch.mid[0] - zoom.pinch.x) / zoom.pinch.s, cy = (zoom.pinch.mid[1] - zoom.pinch.y) / zoom.pinch.s;
+    zoom.s = s; zoom.x = mid[0] - cx * s; zoom.y = mid[1] - cy * s; clampPan(); applyZoom();
+  } else if (zoom.pan) {
+    e.preventDefault();
+    zoom.x = zoom.pan.ox + (e.clientX - zoom.pan.x); zoom.y = zoom.pan.oy + (e.clientY - zoom.pan.y); clampPan(); applyZoom();
+  }
+}, { passive: false });
+function gvPointerEnd(e) {
+  const p = zoom.pts.get(e.pointerId); zoom.pts.delete(e.pointerId);
+  if (zoom.pts.size < 2) zoom.pinch = null;
+  if (zoom.pts.size === 0) zoom.pan = null;
+  if (zoom.s < 1.03 && zoom.pts.size === 0 && zoom.s !== 1) resetZoom();
+  if (e.type === "pointerup" && p && zoom.pts.size === 0 && zoom.img) {
+    const now = Date.now();
+    if (now - zoom.lastTap < 300) {
+      const [px, py] = localPoint(e.clientX, e.clientY);
+      zoom.img.style.transition = "transform .22s"; const im = zoom.img;
+      if (zoom.s > 1.01) { zoom.s = 1; zoom.x = 0; zoom.y = 0; applyZoom(); } else zoomAround(px, py, 2.6);
+      setTimeout(() => im.style.transition = "", 240); zoom.lastTap = 0;
+    } else zoom.lastTap = now;
+  }
+}
+gvPages.addEventListener("pointerup", gvPointerEnd);
+gvPages.addEventListener("pointercancel", gvPointerEnd);
+// stop iOS zooming the whole app when you pinch
+document.addEventListener("gesturestart", e => e.preventDefault());
+
+/* =====================================================================
    CALENDAR EXPORT (.ics with alerts)
    ===================================================================== */
 const icsEsc = s => String(s ?? "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
@@ -1182,7 +1366,7 @@ function checkAlerts() {
 const blobToDataURL = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b); });
 async function exportBackup() {
   const images = {};
-  for (const id of state.trips.flatMap(t => t.days.flatMap(d => d.items.flatMap(i => i.images)))) {
+  for (const id of state.trips.flatMap(t => t.days.flatMap(d => d.items.flatMap(itemImageIds)))) {
     try { const b = await DB.get("images", id); if (b) images[id] = await blobToDataURL(b); } catch {}
   }
   const json = JSON.stringify({ app: "TripFlow", version: 1, exported: new Date().toISOString(), state, images });
