@@ -165,6 +165,7 @@ input,textarea,select{font:inherit;color:inherit}
 .pin.small{width:28px;height:28px}
 .me{width:20px;height:20px;border-radius:10px;background:#0a84ff;border:3px solid #fff;box-shadow:0 0 0 7px rgba(10,132,255,.22),0 1px 4px rgba(0,0,0,.3)}
 .leaflet-container{font:inherit}
+@media (prefers-color-scheme: dark){.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9)}}
 .leaflet-control-attribution{font-size:9px!important;background:rgba(255,255,255,.6)!important}
 
 /* ---------- sheets ---------- */
@@ -939,8 +940,8 @@ function locationDeniedToast() {
 let map = null, stopLayer, routeLayer, userMarker = null, userPos = null, watchId = null, pendingFit = false;
 const dark = matchMedia("(prefers-color-scheme: dark)").matches;
 function tileLayer() {
-  return L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? "dark_all" : "rastertiles/voyager"}/{z}/{x}/{y}{r}.png`,
-    { attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>', subdomains: "abcd", maxZoom: 20, crossOrigin: true });
+  return L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    { attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19, crossOrigin: true });
 }
 function pinIcon(label, cls) {
   return L.divIcon({ className: "", html: `<div class="pin-wrap"><div class="pin ${cls}">${label}</div></div>`, iconSize: [34, 44], iconAnchor: [17, 42] });

@@ -1,13 +1,13 @@
 // TripFlow service worker: makes the app open offline and keeps
 // map tiles you've already seen available without signal.
-const VERSION = "tripflow-v1";
+const VERSION = "tripflow-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 const LIBS = [
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
   "https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js",
 ];
-const TILES = "tripflow-tiles";
+const TILES = "tripflow-tiles-osm";
 const MAX_TILES = 2500;
 
 self.addEventListener("install", e => {
@@ -52,7 +52,7 @@ self.addEventListener("fetch", e => {
   }
 
   // Map tiles: cache first, saved as you browse (handy abroad without data).
-  if (url.hostname.endsWith("basemaps.cartocdn.com")) {
+  if (url.hostname === "tile.openstreetmap.org") {
     e.respondWith((async () => {
       const cache = await caches.open(TILES);
       const hit = await cache.match(req);
