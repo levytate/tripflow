@@ -1,14 +1,17 @@
 // TripFlow service worker: makes the app open offline and keeps
 // map tiles you've already seen available without signal.
-const VERSION = "tripflow-v3";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
+const VERSION = "tripflow-v5";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon2-180.png", "./icon2-192.png", "./icon2-512.png"];
 const LIBS = [
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
   "https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js",
+  "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css",
+  "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js",
+  "https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js",
 ];
 const TILES = "tripflow-tiles-osm";
-const MAX_TILES = 2500;
+const MAX_TILES = 4000;
 
 self.addEventListener("install", e => {
   e.waitUntil((async () => {
@@ -51,8 +54,23 @@ self.addEventListener("fetch", e => {
     return;
   }
 
+  // OpenFreeMap (map style, fonts and tiles): network first so the style stays current, saved copy when offline.
+  if (url.hostname === "tiles.openfreemap.org") {
+    e.respondWith((async () => {
+      const cache = await caches.open(TILES);
+      try {
+        const res = await fetch(req);
+        if (res.ok) cache.put(req, res.clone());
+        return res;
+      } catch {
+        return (await cache.match(req)) || Response.error();
+      }
+    })());
+    return;
+  }
+
   // Map tiles: cache first, saved as you browse (handy abroad without data).
-  if (url.hostname === "tile.openstreetmap.org") {
+  if (["tile.openstreetmap.org", "server.arcgisonline.com"].includes(url.hostname)) {
     e.respondWith((async () => {
       const cache = await caches.open(TILES);
       const hit = await cache.match(req);

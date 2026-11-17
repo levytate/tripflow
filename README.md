@@ -7,7 +7,7 @@ Your travel itinerary app. It runs in Safari and installs to your iPhone home sc
 • index.html (the app)
 • sw.js (lets it open offline and saves map areas you've viewed)
 • manifest.webmanifest (makes it installable)
-• icon-180.png, icon-192.png, icon-512.png
+• icon2-180.png, icon2-192.png, icon2-512.png (app icon)
 • README.md (this file, optional)
 
 ## Put it online with GitHub Pages (free, about 5 minutes, works from your iPhone)
@@ -33,4 +33,5 @@ Your travel itinerary app. It runs in Safari and installs to your iPhone home sc
 • **Backups:** your data lives inside the home screen app. Before deleting the icon or changing phone, use **••• > Back up all trips** on the My Trips screen and save the file to iCloud Drive. Restore it from the same menu.
 • **Offline:** the app opens without signal, and map areas you've looked at before are saved. Search, routes and new map areas need data.
 • **Updating the app:** upload a new index.html to the same repository. The app picks it up the next time it opens with internet.
-• Maps and place search use OpenStreetMap. Directions open in Apple Maps.
+• Maps come from OpenFreeMap (Standard and Simple) and Esri (Satellite); switch with the layers button on the map. Place search uses OpenStreetMap. Go opens Apple Maps using your usual way of travelling.
+• Share a trip: open it, tap ••• > Share this trip. Friends import it with ••• > Import a shared trip or backup on My Trips.

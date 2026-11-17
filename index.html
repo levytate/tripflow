@@ -10,10 +10,13 @@
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-180.png">
-<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon2-180.png">
+<link rel="icon" href="icon2-192.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <title>TripFlow</title>
 <style>
@@ -67,7 +70,9 @@ input,textarea,select{font:inherit;color:inherit}
 .pill.today{background:var(--accent)}
 .chev{color:var(--muted);opacity:.5}
 .empty{text-align:center;padding:70px 24px;color:var(--muted)}
-.empty .ic{width:56px;height:56px;color:var(--accent);opacity:.8}
+.empty-logo{width:96px;height:96px;display:block;margin:0 auto}
+.empty .btn{min-width:220px}
+.btn .ic{width:20px;height:20px}
 .empty h2{color:var(--text);margin:14px 0 6px;font-size:22px}
 .btn{display:inline-flex;gap:6px;align-items:center;justify-content:center;background:var(--accent);color:#fff;font-weight:600;border-radius:12px;padding:12px 20px}
 .btn.secondary{background:var(--accent-soft);color:var(--accent)}
@@ -103,9 +108,9 @@ input,textarea,select{font:inherit;color:inherit}
 .plan{display:flex;gap:12px;align-items:flex-start;background:var(--card);border-radius:16px;padding:12px 6px 12px 12px;margin-bottom:10px;box-shadow:var(--shadow)}
 .plan.ghost{opacity:.35}
 .plan.sortable-chosen{box-shadow:0 8px 30px rgba(0,0,0,.18)}
-.num{width:32px;height:32px;border-radius:16px;background:var(--accent);color:#fff;font-weight:700;font-size:15px;display:grid;place-items:center;flex:none}
+.num{width:32px;height:32px;border-radius:16px;background:transparent;border:2.5px solid var(--accent);color:var(--accent);font-weight:700;font-size:15px;display:grid;place-items:center;flex:none}
 .num .ic{width:18px;height:18px;stroke-width:3}
-.num.done{background:var(--green)}
+.num.done{background:var(--green);border-color:var(--green);color:#fff}
 .plan-body{flex:1;min-width:0;cursor:pointer}
 .plan-top{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
 .plan-title{font-weight:600;font-size:17px;word-break:break-word}
@@ -126,7 +131,7 @@ input,textarea,select{font:inherit;color:inherit}
 
 /* ---------- map drawer ---------- */
 .drawer{position:fixed;left:0;right:0;bottom:0;height:var(--drawer-min);z-index:20;display:flex;flex-direction:column;
-  background:var(--blur);-webkit-backdrop-filter:saturate(180%) blur(24px);backdrop-filter:saturate(180%) blur(24px);
+  background:var(--bg);-webkit-backdrop-filter:saturate(180%) blur(24px);backdrop-filter:saturate(180%) blur(24px);
   border-radius:22px 22px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.14);overflow:hidden;padding-bottom:var(--sab)}
 .drawer-head{padding:0 16px 12px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none}
 .grabber-zone{padding:8px 0 10px;display:flex;justify-content:center}
@@ -137,17 +142,25 @@ input,textarea,select{font:inherit;color:inherit}
 .seg{display:flex;background:var(--card2);border-radius:9px;padding:2px;flex:none}
 .seg button{font-size:13px;font-weight:600;padding:5px 9px;border-radius:7px;color:var(--muted)}
 .seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
-.next-btn{width:100%;margin-top:10px;display:flex;align-items:center;gap:10px;background:var(--accent);color:#fff;border-radius:14px;padding:10px 14px;text-align:left}
-.next-btn .ic{width:26px;height:26px}
-.next-btn .nb-text{flex:1;min-width:0}
-.next-btn b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.next-btn small{font-size:13px;opacity:.9}
-.next-btn .go{font-weight:700;font-size:17px}
+.next-row{display:flex;gap:8px;margin-top:10px}
+.nb-done{width:54px;border-radius:14px;background:var(--green);color:#fff;display:grid;place-items:center;flex:none}
+.nb-done .ic{width:26px;height:26px;stroke-width:3}
+.nb-done:active,.nb-main:active{opacity:.75}
+.nb-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;background:var(--accent);color:#fff;border-radius:14px;padding:10px 14px;text-align:left}
+.nb-main .ic{width:26px;height:26px}
+.nb-main .nb-text{flex:1;min-width:0}
+.nb-main b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nb-main small{display:block;font-size:13px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nb-main .go{font-weight:700;font-size:17px}
 .map-wrap{position:relative;flex:1;min-height:0;overflow:hidden}
 #map{position:absolute;inset:0;background:var(--card2)}
 .map-fab{position:absolute;right:12px;top:12px;z-index:900;width:42px;height:42px;border-radius:12px;background:var(--card);color:var(--accent);display:grid;place-items:center;box-shadow:0 2px 10px rgba(0,0,0,.18)}
 .map-fab .ic{width:22px;height:22px}
 .fit-fab{top:62px}
+.layers-fab{top:112px}
+.map-fab.on{background:var(--accent);color:#fff}
+.scope-pill{position:absolute;left:12px;top:12px;z-index:900;height:36px;padding:0 12px 0 9px;border-radius:18px;background:var(--card);color:var(--text);font-size:14px;font-weight:600;display:flex;align-items:center;gap:5px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.scope-pill .ic{width:17px;height:17px;color:var(--accent)}
 .stop-cards{position:absolute;left:0;right:0;bottom:12px;z-index:900;display:flex;gap:10px;overflow-x:auto;padding:0 12px;scrollbar-width:none}
 .stop-card{flex:none;width:230px;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:14px;padding:10px;box-shadow:0 2px 12px rgba(0,0,0,.18)}
 .sc-main{flex:1;min-width:0;display:flex;gap:8px;align-items:center;text-align:left}
@@ -165,7 +178,6 @@ input,textarea,select{font:inherit;color:inherit}
 .pin.small{width:28px;height:28px}
 .me{width:20px;height:20px;border-radius:10px;background:#0a84ff;border:3px solid #fff;box-shadow:0 0 0 7px rgba(10,132,255,.22),0 1px 4px rgba(0,0,0,.3)}
 .leaflet-container{font:inherit}
-@media (prefers-color-scheme: dark){.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9)}}
 .leaflet-control-attribution{font-size:9px!important;background:rgba(255,255,255,.6)!important}
 
 /* ---------- sheets ---------- */
@@ -292,16 +304,15 @@ input,textarea,select{font:inherit;color:inherit}
     <div class="grabber-zone" id="grabber"><div class="grabber"></div></div>
     <div class="dh-row">
       <div style="min-width:0"><div class="dh-title" id="dhTitle">Route</div><div class="dh-sub" id="dhSub"></div></div>
-      <div class="seg" id="modeSeg">
-        <button data-mode="walking">Walk</button><button data-mode="driving">Drive</button><button data-mode="transit">Transit</button>
-      </div>
     </div>
-    <button class="next-btn hidden" id="nextBtn"></button>
+    <div class="next-row hidden" id="nextBtn"></div>
   </div>
   <div class="map-wrap">
     <div id="map"></div>
-    <button class="map-fab" id="locateBtn" aria-label="My location" data-icon="locate"></button>
+    <button class="scope-pill" id="scopeBtn" aria-label="Focus area"></button>
+    <button class="map-fab on" id="locateBtn" aria-label="Follow me and my next stop" data-icon="locate"></button>
     <button class="map-fab fit-fab" id="fitBtn" aria-label="Show all stops" data-icon="route"></button>
+    <button class="map-fab layers-fab" id="layersBtn" aria-label="Map style" data-icon="layers"></button>
     <div class="stop-cards" id="stopCards"></div>
   </div>
 </div>
@@ -458,9 +469,16 @@ const ICON = {
   plane: svg('<path d="M10.5 21l1.5-1 1.5 1v-4l7-3v-2l-7 1V5.5a1.5 1.5 0 0 0-3 0V13l-7-1v2l7 3z"/>'),
   map: svg('<path d="M9 4L3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/>'),
   eye: svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+  layers: svg('<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5" opacity=".5"/>'),
   chev: svg('<path d="M9 6l6 6-6 6"/>'),
   share: svg('<path d="M12 3v12M7.5 7.5L12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>'),
 };
+const PLANE_PATH = "M0-15C1.7-15 2.4-12.4 2.4-10.2L2.4-3.4 14.5 3.6V7L2.4 3.4V9.6L6.6 12.6V15.2L0 13.4-6.6 15.2V12.6L-2.4 9.6V3.4L-14.5 7V3.6L-2.4-3.4V-10.2C-2.4-12.4-1.7-15 0-15Z";
+const LOGO = `<svg class="empty-logo" viewBox="0 0 64 64" aria-hidden="true">
+  <g fill="var(--accent)"><circle cx="9" cy="16" r="4.2"/><circle cx="9" cy="32" r="4.2"/><circle cx="9" cy="48" r="4.2"/></g>
+  <g stroke="var(--accent)" stroke-opacity=".35" stroke-width="4.5" stroke-linecap="round"><path d="M20 16H56M20 32H56M20 48H56"/></g>
+  <path d="${PLANE_PATH}" transform="translate(41 31) rotate(45) scale(1.15)" fill="var(--accent)" stroke="var(--bg)" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"/>
+</svg>`;
 function initIcons() { $$("[data-icon]").forEach(el => el.insertAdjacentHTML("afterbegin", ICON[el.dataset.icon] || "")); }
 
 // ---------- dates ----------
@@ -536,7 +554,7 @@ async function compressImage(file, max = 1600) {
 const current = { tripId: null, dayIndex: 0 };
 const currentTrip = () => state.trips.find(t => t.id === current.tripId);
 const newDay = () => ({ id: uid(), title: "", done: false, items: [] });
-let mode = localStorage.getItem("tripflow-mode") || "walking";
+const mode = "walking";   // used only to draw route lines along streets and paths
 
 // ---------- toast & action sheet ----------
 let toastTimer;
@@ -579,7 +597,7 @@ function renderHome() {
       <button class="icon-btn" id="hideInstall" style="width:28px;height:28px;color:var(--muted)">${ICON.x}</button></div>`;
   }
   if (!trips.length) {
-    html += `<div class="empty">${ICON.plane}<h2>No trips yet</h2><p>Create a travel plan, then fill each day with where you're going.</p>
+    html += `<div class="empty">${LOGO}<h2>No trips yet</h2><p>Create a travel plan, then fill each day with where you're going.</p>
       <p><button class="btn" id="emptyNew">${ICON.plus} New Trip</button></p><p><button class="btn secondary" id="sampleBtn">Try a sample trip</button></p></div>`;
   }
   const section = (label, list) => !list.length ? "" : `<div class="section-label">${label}</div>` + list.map(tripCard).join("");
@@ -609,7 +627,7 @@ $("#newTripBtn").onclick = () => openTripEditor(null);
 $("#homeMenuBtn").onclick = () => showActions("TripFlow", [
   { label: "New trip", fn: () => openTripEditor(null) },
   { label: "Back up all trips", fn: exportBackup },
-  { label: "Restore from backup", fn: () => $("#importFile").click() },
+  { label: "Import a shared trip or backup", fn: () => $("#importFile").click() },
 ]);
 
 /* =====================================================================
@@ -703,7 +721,7 @@ function dayPageHTML(trip, i) {
       ${items.length ? `<div class="muted small">${doneCount} of ${items.length} plans done</div>` : ""}
       <button class="complete-btn ${day.done ? "done" : ""}" data-action="complete" data-day="${i}">${day.done ? ICON.check + " Day completed" : "Complete day"}</button>
     </div>
-    <div class="section-label"><span>Today's flow</span>${items.length > 1 ? '<span style="text-transform:none">Hold ≡ to reorder</span>' : ""}</div>
+    <div class="section-label"><span>Today's checklist</span>${items.length ? `<span style="text-transform:none">Tap a number to tick off</span>` : ""}</div>
     <div class="plan-list" data-day="${i}">${items.map((it, k) => planHTML(i, it, k)).join("")}</div>
     ${items.length ? "" : '<div class="empty-day">Nothing planned yet. Add plans in the order you want the day to go.</div>'}
     <button class="add-plan" data-action="add" data-day="${i}">${ICON.plus} Add plan</button>
@@ -786,7 +804,7 @@ pagesEl.addEventListener("click", e => {
     }
     case "add": openPlanEditor(di, null); break;
     case "edit": openPlanEditor(di, item); break;
-    case "toggle": item.done = !item.done; save(); renderPage(di); updateMap(false); break;
+    case "toggle": item.done = !item.done; save(); renderPage(di); if (di === current.dayIndex) updateMap(false); if (item.done) afterTick(di); break;
     case "qr": openQR(item); break;
     case "guide": openGuides(item); break;
     case "go": openDirections(item); break;
@@ -798,6 +816,7 @@ $("#tripMenuBtn").onclick = () => {
   showActions(trip.name, [
     { label: "Jump to today", fn: () => { current.dayIndex = todayIndex(trip); goToDay(current.dayIndex); } },
     { label: "Sort this day's booked plans by time", fn: sortTimedPlans },
+    { label: "Share this trip", fn: () => shareTripMenu(trip) },
     { label: "Add all booked plans to Calendar", fn: () => addTripToCalendar(trip) },
     { label: "Edit trip (name, dates, days)", fn: () => openTripEditor(trip) },
     { label: "Delete trip", destructive: true, fn: () => deleteTrip(trip) },
@@ -857,7 +876,7 @@ function renderLocGroup() {
     if (!$("#miniMap")) return;
     miniMap = L.map("miniMap", { zoomControl: false, dragging: false, touchZoom: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, attributionControl: false, tap: false })
       .setView([ed.loc.lat, ed.loc.lng], 15);
-    tileLayer().addTo(miniMap);
+    MAP_STYLES[mapStyle].make().addTo(miniMap);
     L.marker([ed.loc.lat, ed.loc.lng], { icon: pinIcon("", "") }).addTo(miniMap);
     setTimeout(() => miniMap?.invalidateSize(), 350);
   }, 30);
@@ -1014,20 +1033,57 @@ function locationDeniedToast() {
 /* =====================================================================
    MAP DRAWER (Leaflet + OpenStreetMap / CARTO tiles, OSRM routes)
    ===================================================================== */
-let map = null, stopLayer, routeLayer, userMarker = null, userPos = null, watchId = null, pendingFit = false;
+let map = null, stopLayer, routeLayer, legLayer, scopeLayer, userMarker = null, userPos = null, watchId = null, pendingFit = false;
+let following = true, programmatic = false, progTimer, lastFocusPos = null, lastLegPos = null, lastNextId = null, legInfo = null;
+let scopeKm = +(localStorage.getItem("tripflow-scope") || 1);
+const SCOPES = [0.5, 1, 2, 5];
 const dark = matchMedia("(prefers-color-scheme: dark)").matches;
-function tileLayer() {
+const accent = () => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#007aff";
+function tileLayer() {   // basic fallback map
   return L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     { attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19, crossOrigin: true });
+}
+const webglOK = (() => { try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; } })();
+function vectorLayer(style) {
+  if (!(window.maplibregl && L.maplibreGL && webglOK)) return tileLayer();
+  return L.maplibreGL({ style, attribution: '<a href="https://openfreemap.org">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' });
+}
+const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
+const MAP_STYLES = {
+  standard: { label: "Standard", make: () => vectorLayer("https://tiles.openfreemap.org/styles/liberty") },
+  simple: { label: "Simple", make: () => vectorLayer("https://tiles.openfreemap.org/styles/positron") },
+  satellite: { label: "Satellite", make: () => L.layerGroup([
+    L.tileLayer(ESRI + "World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Imagery © Esri", crossOrigin: true }),
+    L.tileLayer(ESRI + "Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, crossOrigin: true, opacity: .8 }),
+    L.tileLayer(ESRI + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, crossOrigin: true }) ]) },
+};
+let mapStyle = MAP_STYLES[localStorage.getItem("tripflow-mapstyle")] ? localStorage.getItem("tripflow-mapstyle") : "standard";
+let baseLayer = null;
+function setMapStyle(key) {
+  mapStyle = key; localStorage.setItem("tripflow-mapstyle", key);
+  if (!map) return;
+  if (baseLayer) map.removeLayer(baseLayer);
+  baseLayer = MAP_STYLES[key].make().addTo(map);
 }
 function pinIcon(label, cls) {
   return L.divIcon({ className: "", html: `<div class="pin-wrap"><div class="pin ${cls}">${label}</div></div>`, iconSize: [34, 44], iconAnchor: [17, 42] });
 }
 function initMap() {
+  paintScope();
   if (!window.L) { $("#map").innerHTML = '<div class="map-msg">The map needs an internet connection the first time you open TripFlow.</div>'; return; }
-  map = L.map("map", { zoomControl: false, tap: false }).setView([51.505, -0.09], 12);
-  tileLayer().addTo(map);
-  routeLayer = L.layerGroup().addTo(map); stopLayer = L.layerGroup().addTo(map);
+  map = L.map("map", { zoomControl: false, tap: false, maxBounds: [[-85, -Infinity], [85, Infinity]] }).setView([51.505, -0.09], 12);
+  setMapStyle(mapStyle);
+  routeLayer = L.layerGroup().addTo(map); scopeLayer = L.layerGroup().addTo(map);
+  legLayer = L.layerGroup().addTo(map); stopLayer = L.layerGroup().addTo(map);
+  // if you pan or zoom the map yourself, stop following until you tap the locate button
+  map.on("movestart", () => { if (!programmatic && following) { following = false; paintFollow(); } });
+}
+// moves made by the app itself shouldn't switch off following
+function moveMap(fn) {
+  programmatic = true; clearTimeout(progTimer);
+  map.once("moveend", () => { clearTimeout(progTimer); progTimer = setTimeout(() => { programmatic = false; }, 60); });
+  fn();
+  progTimer = setTimeout(() => { programmatic = false; }, 1500);
 }
 function startWatchingLocation() {
   if (watchId !== null || !navigator.geolocation) return;
@@ -1036,80 +1092,169 @@ function startWatchingLocation() {
     if (!map) return;
     if (!userMarker) userMarker = L.marker(userPos, { icon: L.divIcon({ className: "", html: '<div class="me"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }), zIndexOffset: 1000, interactive: false }).addTo(map);
     else userMarker.setLatLng(userPos);
-  }, () => {}, { enableHighAccuracy: true, maximumAge: 15000 });
+    onUserMoved();
+  }, () => {}, { enableHighAccuracy: true, maximumAge: 10000 });
+}
+function onUserMoved() {
+  if (!current.tripId || !map) return;
+  const day = currentTrip()?.days[current.dayIndex]; if (!day) return;
+  const stops = stopsOf(day), next = stops.find(s => !s.it.done);
+  if (next && (!lastLegPos || L.latLng(lastLegPos).distanceTo(userPos) > 60)) { lastLegPos = userPos; drawLeg(next); }
+  if (following && (!lastFocusPos || L.latLng(lastFocusPos).distanceTo(userPos) > 80)) refocus();
 }
 const stopsOf = day => day.items.map((it, k) => ({ it, n: k + 1 })).filter(s => s.it.loc);
+const currentStops = () => { const day = currentTrip()?.days[current.dayIndex]; return day ? stopsOf(day) : []; };
+const nextStop = () => currentStops().find(s => !s.it.done);
+
+function fmtDist(m) { return m < 950 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(1)} km`; }
+function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} hr${m % 60 ? ` ${m % 60} min` : ""}`; }
+function legText(next) {
+  if (!legInfo || legInfo.id !== next.it.id) return "";
+  return `${fmtDist(legInfo.dist)} away`;
+}
+function renderNext(next) {
+  const nb = $("#nextBtn");
+  if (!next) { nb.classList.add("hidden"); return; }
+  const sub = [legText(next), next.it.time ? `at ${fmtTime(next.it.time)}` : ""].filter(Boolean).join(" · ") || esc(next.it.loc.name);
+  nb.innerHTML = `<button class="nb-done" data-nb="done" aria-label="Tick off ${esc(next.it.title)}">${ICON.check}</button>
+    <button class="nb-main" data-nb="go">${ICON.nav}<div class="nb-text"><b>Next: ${esc(next.it.title)}</b><small>${sub}</small></div><span class="go">Go</span></button>`;
+  nb.classList.remove("hidden");
+}
+$("#nextBtn").addEventListener("click", e => {
+  const b = e.target.closest("[data-nb]"); const next = nextStop(); if (!b || !next) return;
+  if (b.dataset.nb === "go") return openDirections(next.it);
+  next.it.done = true; save(); renderPage(current.dayIndex); updateMap(false); afterTick(current.dayIndex);
+});
+function afterTick(di) {
+  navigator.vibrate?.(25);
+  const trip = currentTrip(), day = trip.days[di], nextItem = day.items.find(x => !x.done);
+  if (!nextItem) {
+    if (day.done) return;
+    toast("<b>Everything ticked off! 🎉</b>Mark the whole day as complete?", { action: "Complete day", duration: 7000, onAction: () => {
+      day.done = true; save(); renderPage(di); if (di + 1 < trip.days.length) setTimeout(() => goToDay(di + 1), 400);
+    } });
+  } else if (nextItem.loc) {
+    toast(`<b>Next up: ${esc(nextItem.title)}</b>${nextItem.time ? "at " + fmtTime(nextItem.time) : esc(nextItem.loc.name)}`, { action: "Show route", duration: 5000,
+      onAction: () => { following = true; paintFollow(); setDetent(Math.max(detent, 1)); } });
+  } else toast(`<b>Next up: ${esc(nextItem.title)}</b>`, { duration: 3000 });
+}
 
 function updateMap(fit) {
   const trip = currentTrip(); if (!trip) return;
   const day = trip.days[current.dayIndex]; if (!day) return;
   const stops = stopsOf(day), next = stops.find(s => !s.it.done);
+  const doneCount = stops.filter(s => s.it.done).length;
   $("#dhTitle").textContent = `Day ${current.dayIndex + 1} route`;
-  $("#dhSub").textContent = stops.length ? `${stops.length} stop${stops.length === 1 ? "" : "s"} · drag up for the map` : "Add locations to your plans to see them here";
-  const nb = $("#nextBtn");
-  if (next) {
-    const sub = next.it.time ? `at ${fmtTime(next.it.time)}${next.it.loc.name !== next.it.title ? " · " + esc(next.it.loc.name) : ""}` : esc(next.it.loc.name);
-    nb.innerHTML = `${ICON.nav}<div class="nb-text"><b>Next: ${esc(next.it.title)}</b><small>${sub}</small></div><span class="go">Go</span>`;
-    nb.onclick = () => openDirections(next.it); nb.classList.remove("hidden");
-  } else nb.classList.add("hidden");
+  $("#dhSub").textContent = !stops.length ? "Add locations to your plans to see them here"
+    : next ? `${doneCount} of ${stops.length} stops done` : `All ${stops.length} stops done`;
+  renderNext(next);
   $("#stopCards").innerHTML = stops.map(s => `<div class="stop-card">
       <button class="sc-main" data-focus="${s.it.id}"><span class="sc-num ${s.it.done ? "done" : ""}">${s.it.done ? "✓" : s.n}</span>
         <span class="sc-text"><b>${esc(s.it.title)}</b><small>${s.it.time ? fmtTime(s.it.time) + " · " : ""}${esc(s.it.loc.name)}</small></span></button>
       <button class="sc-go" data-go="${s.it.id}" aria-label="Directions">${ICON.nav}</button></div>`).join("");
   if (detent === 0) setDetent(0);   // header height may have changed
   if (!map) return;
+  // every pin stays on the map: ticked off = green, next = orange
   stopLayer.clearLayers();
   stops.forEach(s => {
     L.marker([s.it.loc.lat, s.it.loc.lng], { icon: pinIcon(s.it.done ? "✓" : s.n, s.it.done ? "done" : s === next ? "next" : ""), zIndexOffset: s === next ? 500 : 0 })
       .on("click", () => focusStop(s.it)).addTo(stopLayer);
   });
+  scopeLayer.clearLayers();
+  if (next) L.circle([next.it.loc.lat, next.it.loc.lng], { radius: scopeKm * 1000, color: accent(), weight: 1.5, opacity: .55, fillOpacity: .05, dashArray: "5 7", interactive: false }).addTo(scopeLayer);
   drawRoute(stops);
-  if (fit) fitCurrent();
+  lastLegPos = userPos; drawLeg(next);
+  const nextId = next?.it.id || null, nextChanged = nextId !== lastNextId; lastNextId = nextId;
+  if (fit) { following = true; paintFollow(); refocus(); }
+  else if (nextChanged && following) refocus();
 }
-function fitCurrent() {
+// Focus view: the next stop with a set radius around it, plus you if you're nearby.
+function refocus(animate = true) {
   if (!map) return;
   if ($("#map").clientHeight < 60) { pendingFit = true; return; }
-  const day = currentTrip()?.days[current.dayIndex]; if (!day) return;
-  const pts = stopsOf(day).map(s => [s.it.loc.lat, s.it.loc.lng]);
-  if (pts.length === 1) map.setView(pts[0], 15);
-  else if (pts.length > 1) map.fitBounds(pts, { paddingTopLeft: [40, 40], paddingBottomRight: [60, 110], maxZoom: 16 });
-  else if (userPos) map.setView(userPos, 14);
+  const next = nextStop();
+  if (!next) return fitAll(animate);
+  const c = L.latLng(next.it.loc.lat, next.it.loc.lng), b = c.toBounds(scopeKm * 2000);
+  if (userPos && c.distanceTo(userPos) < 30000) b.extend(userPos);
+  moveMap(() => map.fitBounds(b, { paddingTopLeft: [30, 56], paddingBottomRight: [64, 110], maxZoom: 17, animate }));
+  lastFocusPos = userPos;
 }
+// Whole-day view: all pins
+function fitAll(animate = true) {
+  if (!map) return;
+  if ($("#map").clientHeight < 60) { pendingFit = true; return; }
+  const pts = currentStops().map(s => [s.it.loc.lat, s.it.loc.lng]);
+  moveMap(() => {
+    if (pts.length === 1) map.setView(pts[0], 15, { animate });
+    else if (pts.length > 1) map.fitBounds(pts, { paddingTopLeft: [40, 56], paddingBottomRight: [60, 110], maxZoom: 16, animate });
+    else if (userPos) map.setView(userPos, 14, { animate });
+  });
+}
+const fitCurrent = () => following ? refocus() : fitAll();
+
+// The whole day's route, drawn faintly underneath
 let routeToken = 0; const routeCache = new Map();
 async function drawRoute(stops) {
   const token = ++routeToken; routeLayer.clearLayers();
   if (stops.length < 2) return;
-  const pts = stops.map(s => [s.it.loc.lat, s.it.loc.lng]);
-  const color = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#007aff";
-  if (mode === "transit") { L.polyline(pts, { color: "#8e8e93", weight: 4, dashArray: "6 10", lineCap: "round" }).addTo(routeLayer); return; }
+  const pts = stops.map(s => [s.it.loc.lat, s.it.loc.lng]), color = accent();
+  if (mode === "transit") { L.polyline(pts, { color, weight: 3, opacity: .35, dashArray: "6 10", lineCap: "round", interactive: false }).addTo(routeLayer); return; }
   const key = mode + "|" + pts.map(p => p.join(",")).join(";");
   let coords = routeCache.get(key);
   if (!coords) {
-    L.polyline(pts, { color, weight: 3, opacity: .45, dashArray: "4 8" }).addTo(routeLayer);
     try {
       const profile = mode === "walking" ? "routed-foot" : "routed-car";
-      const url = `https://routing.openstreetmap.de/${profile}/route/v1/driving/${pts.map(p => p[1] + "," + p[0]).join(";")}?overview=full&geometries=geojson`;
-      const j = await (await fetch(url)).json();
-      coords = j.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-      routeCache.set(key, coords);
+      const j = await (await fetch(`https://routing.openstreetmap.de/${profile}/route/v1/driving/${pts.map(p => p[1] + "," + p[0]).join(";")}?overview=full&geometries=geojson`)).json();
+      coords = j.routes[0].geometry.coordinates.map(c => [c[1], c[0]]); routeCache.set(key, coords);
     } catch { coords = null; }
     if (token !== routeToken) return;
-    routeLayer.clearLayers();
   }
-  if (coords) {
-    L.polyline(coords, { color: "#fff", weight: 8, opacity: .9 }).addTo(routeLayer);
-    L.polyline(coords, { color, weight: 5, opacity: .95, lineCap: "round", lineJoin: "round" }).addTo(routeLayer);
-  } else L.polyline(pts, { color, weight: 4, dashArray: "6 10" }).addTo(routeLayer);
+  L.polyline(coords || pts, { color, weight: 4, opacity: .35, dashArray: coords ? null : "6 10", lineCap: "round", lineJoin: "round", interactive: false }).addTo(routeLayer);
+}
+// The live leg: from where you are now to the next unticked stop
+let legToken = 0; const legCache = new Map();
+async function drawLeg(next) {
+  if (!map) return;
+  const token = ++legToken; legLayer.clearLayers();
+  if (!next) { legInfo = null; return; }
+  const dest = [next.it.loc.lat, next.it.loc.lng];
+  if (!userPos || L.latLng(userPos).distanceTo(dest) > 50000) { legInfo = null; renderNext(next); return; }   // you're not nearby yet
+  const origin = userPos, color = accent(), straight = L.latLng(origin).distanceTo(dest);
+  if (mode === "transit") {
+    L.polyline([origin, dest], { color, weight: 5, dashArray: "1 10", lineCap: "round", interactive: false }).addTo(legLayer);
+    legInfo = { id: next.it.id, dist: straight }; renderNext(next); return;
+  }
+  const key = `${mode}|${origin.map(v => v.toFixed(3)).join(",")}|${dest.join(",")}`;
+  let r = legCache.get(key);
+  if (!r) {
+    L.polyline([origin, dest], { color, weight: 4, opacity: .6, dashArray: "4 8", interactive: false }).addTo(legLayer);
+    try {
+      const profile = mode === "walking" ? "routed-foot" : "routed-car";
+      const j = await (await fetch(`https://routing.openstreetmap.de/${profile}/route/v1/driving/${origin[1]},${origin[0]};${dest[1]},${dest[0]}?overview=full&geometries=geojson`)).json();
+      const rt = j.routes[0]; r = { coords: rt.geometry.coordinates.map(c => [c[1], c[0]]), dist: rt.distance, dur: rt.duration }; legCache.set(key, r);
+    } catch { r = null; }
+    if (token !== legToken) return;
+    legLayer.clearLayers();
+  }
+  if (r) {
+    L.polyline(r.coords, { color: "#fff", weight: 9, opacity: .95, interactive: false }).addTo(legLayer);
+    L.polyline(r.coords, { color, weight: 6, lineCap: "round", lineJoin: "round", interactive: false }).addTo(legLayer);
+    legInfo = { id: next.it.id, dist: r.dist, dur: r.dur };
+  } else {
+    L.polyline([origin, dest], { color, weight: 4, dashArray: "6 10", interactive: false }).addTo(legLayer);
+    legInfo = { id: next.it.id, dist: straight };
+  }
+  renderNext(next);
 }
 function focusStop(item) {
   if (!map) return;
+  following = false; paintFollow();
   if (detent === 0) setDetent(1);
-  setTimeout(() => map.flyTo([item.loc.lat, item.loc.lng], 16, { duration: .6 }), detent === 0 ? 0 : 340);
+  setTimeout(() => moveMap(() => map.flyTo([item.loc.lat, item.loc.lng], 16, { duration: .6 })), detent === 0 ? 0 : 340);
 }
 function openDirections(item) {
   if (!item?.loc) return;
-  const flag = { walking: "w", driving: "d", transit: "r" }[mode];
-  window.location.href = `https://maps.apple.com/?daddr=${item.loc.lat},${item.loc.lng}&dirflg=${flag}`;
+  window.location.href = `https://maps.apple.com/?daddr=${item.loc.lat},${item.loc.lng}`;
 }
 $("#stopCards").addEventListener("click", e => {
   const day = currentTrip().days[current.dayIndex];
@@ -1117,18 +1262,27 @@ $("#stopCards").addEventListener("click", e => {
   if (f) focusStop(day.items.find(x => x.id === f.dataset.focus));
   if (g) openDirections(day.items.find(x => x.id === g.dataset.go));
 });
-$("#modeSeg").addEventListener("click", e => {
-  const b = e.target.closest("[data-mode]"); if (!b) return;
-  mode = b.dataset.mode; localStorage.setItem("tripflow-mode", mode); paintMode(); updateMap(false);
-});
-function paintMode() { $$("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === mode)); }
+
+function paintFollow() { $("#locateBtn").classList.toggle("on", following); }
+function paintScope() { $("#scopeBtn").innerHTML = `${ICON.locate}<span>${scopeKm < 1 ? scopeKm * 1000 + " m" : scopeKm + " km"}</span>`; }
+// Locate: go back to following you and the next stop
 $("#locateBtn").onclick = () => {
+  following = true; paintFollow();
   if (detent === 0) setDetent(1);
-  const fly = () => setTimeout(() => map?.flyTo(userPos, 16, { duration: .6 }), 340);
-  if (userPos) return fly();
-  navigator.geolocation?.getCurrentPosition(p => { userPos = [p.coords.latitude, p.coords.longitude]; startWatchingLocation(); fly(); }, locationDeniedToast, { enableHighAccuracy: true, timeout: 12000 });
+  const go = () => setTimeout(() => nextStop() ? refocus() : (userPos && moveMap(() => map?.flyTo(userPos, 16, { duration: .6 }))), detent === 0 ? 360 : 0);
+  if (userPos) return go();
+  navigator.geolocation?.getCurrentPosition(p => { userPos = [p.coords.latitude, p.coords.longitude]; startWatchingLocation(); go(); }, locationDeniedToast, { enableHighAccuracy: true, timeout: 12000 });
 };
-$("#fitBtn").onclick = () => fitCurrent();
+$("#layersBtn").onclick = () => showActions("Map style", Object.entries(MAP_STYLES).map(([k, v]) => ({
+  label: (k === mapStyle ? "✓ " : "") + v.label, fn: () => setMapStyle(k) })));
+// Route button: see the whole day
+$("#fitBtn").onclick = () => { following = false; paintFollow(); fitAll(); };
+// Area around the next stop: 500 m, 1, 2 or 5 km
+$("#scopeBtn").onclick = () => {
+  scopeKm = SCOPES[(SCOPES.indexOf(scopeKm) + 1) % SCOPES.length]; localStorage.setItem("tripflow-scope", scopeKm);
+  paintScope(); following = true; paintFollow(); updateMap(false); refocus();
+  toast(`<b>Focus area: ${scopeKm < 1 ? scopeKm * 1000 + " m" : scopeKm + " km"}</b>around your next stop`, { duration: 1800 });
+};
 
 // ---- drawer drag (three snap points) ----
 const drawer = $("#drawer"), head = $("#drawerHead");
@@ -1145,7 +1299,7 @@ function setDetent(d, animate = true) {
   drawer.style.height = H[d] + "px";
   document.documentElement.style.setProperty("--drawer-min", H[0] + "px");
   clearTimeout(detentTimer);
-  detentTimer = setTimeout(() => { map?.invalidateSize(); if (pendingFit && d > 0) { pendingFit = false; fitCurrent(); } }, animate ? 360 : 0);
+  detentTimer = setTimeout(() => { if (map) moveMap(() => map.invalidateSize()); if (pendingFit && d > 0) { pendingFit = false; fitCurrent(); } }, animate ? 360 : 0);
 }
 head.addEventListener("pointerdown", e => { drag = { y: e.clientY, h: drawer.offsetHeight, t: performance.now(), moved: false, id: e.pointerId }; });
 head.addEventListener("pointermove", e => {
@@ -1355,7 +1509,7 @@ function checkAlerts() {
       toast(`<b>${esc(item.title)}</b>${esc(body)}`, { icon: ICON.bell, action: item.images.length ? "QR code" : "Open", duration: 12000,
         onAction: () => item.images.length ? openQR(item) : openTrip(trip.id, di), onTap: () => openTrip(trip.id, di) });
       if ("Notification" in window && Notification.permission === "granted")
-        navigator.serviceWorker?.ready.then(r => r.showNotification(item.title, { body, tag: key, icon: "icon-192.png" })).catch(() => {});
+        navigator.serviceWorker?.ready.then(r => r.showNotification(item.title, { body, tag: key, icon: "icon2-192.png" })).catch(() => {});
     }
   }));
 }
@@ -1372,16 +1526,55 @@ async function exportBackup() {
   const json = JSON.stringify({ app: "TripFlow", version: 1, exported: new Date().toISOString(), state, images });
   await shareFile(new File([json], `TripFlow-backup-${toISO(new Date())}.json`, { type: "application/json" }));
 }
+// ---- share one trip with travel companions ----
+const appLink = () => location.origin + location.pathname.replace(/index\.html$/, "");
+function shareTripMenu(trip) {
+  const hasQR = trip.days.some(d => d.items.some(it => it.images.length));
+  if (!hasQR) return shareTrip(trip, false);
+  showActions("Include your QR codes & tickets? Tour Guide Notes are always included.", [
+    { label: "Share without QR codes", fn: () => shareTrip(trip, false) },
+    { label: "Share with QR codes", fn: () => shareTrip(trip, true) },
+  ]);
+}
+async function shareTrip(trip, withQR) {
+  const copy = JSON.parse(JSON.stringify(trip));
+  if (!withQR) copy.days.forEach(d => d.items.forEach(it => { it.images = []; }));
+  const images = {};
+  for (const id of copy.days.flatMap(d => d.items.flatMap(itemImageIds))) {
+    try { const b = await DB.get("images", id); if (b) images[id] = await blobToDataURL(b); } catch {}
+  }
+  const json = JSON.stringify({ app: "TripFlow", version: 1, kind: "trip", exported: new Date().toISOString(), state: { trips: [copy] }, images });
+  const safe = trip.name.replace(/[\\/:*?"<>|]/g, "").trim() || "Trip";
+  const file = new File([json], `${safe}.tripflow.json`, { type: "application/json" });
+  const start = parseISO(trip.start);
+  const text = `Here's our itinerary for "${trip.name}" (${fmt(start, { day: "numeric", month: "short" })} to ${fmt(tripEnd(trip), { day: "numeric", month: "short", year: "numeric" })}) in TripFlow.\n\n` +
+    `1. Open ${appLink()} in Safari, tap Share, then Add to Home Screen.\n` +
+    `2. Save the attached file to Files.\n` +
+    `3. In TripFlow, tap ••• on My Trips, then "Import a shared trip or backup", and pick the file.\n\n` +
+    `If I send an updated file later, import it the same way and your copy will update.`;
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], text, title: trip.name }); return; }
+    catch (err) { if (err.name === "AbortError") return; }
+  }
+  try { await navigator.clipboard?.writeText(text); toast("<b>Invite message copied</b>Paste it with the downloaded file.", { duration: 5000 }); } catch {}
+  const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
 $("#importFile").addEventListener("change", async e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   try {
     const data = JSON.parse(await f.text());
-    if (data.app !== "TripFlow" || !Array.isArray(data.state?.trips)) throw new Error("not a TripFlow backup");
-    if (!confirm(`Restore ${data.state.trips.length} trip(s) from this backup? Trips that already exist here will be replaced with the backup copy.`)) return;
+    if (data.app !== "TripFlow" || !Array.isArray(data.state?.trips)) throw new Error("This isn't a TripFlow file.");
+    const incoming = data.state.trips, existing = incoming.filter(t => state.trips.some(x => x.id === t.id));
+    const msg = data.kind === "trip"
+      ? (existing.length ? `Update "${incoming[0].name}" with this newer copy? Your current copy of it will be replaced.` : `Add "${incoming[0].name}" to your trips?`)
+      : `Restore ${incoming.length} trip(s) from this backup? Trips that already exist here will be replaced with the backup copy.`;
+    if (!confirm(msg)) return;
     for (const [id, url] of Object.entries(data.images || {})) await DB.put("images", id, await (await fetch(url)).blob());
     const ids = new Set(data.state.trips.map(t => t.id));
     state.trips = state.trips.filter(t => !ids.has(t.id)).concat(data.state.trips);
-    save(); renderHome(); toast("<b>Backup restored</b>");
+    save(); renderHome();
+    toast(data.kind === "trip" ? `<b>${existing.length ? "Trip updated" : "Trip added"}</b>${esc(incoming[0].name)}` : "<b>Backup restored</b>");
   } catch (err) { toast(`<b>Couldn't restore</b>${esc(err.message)}`); }
 });
 
@@ -1410,7 +1603,7 @@ function makeSample() {
    START
    ===================================================================== */
 (async function boot() {
-  initIcons(); paintMode();
+  initIcons();
   try { await DB.open(); state = (await DB.get("kv", "state")) || { trips: [] }; }
   catch { dbOK = false; try { state = JSON.parse(localStorage.getItem("tripflow-state")) || { trips: [] }; } catch { state = { trips: [] }; } }
   navigator.storage?.persist?.().catch(() => {});
