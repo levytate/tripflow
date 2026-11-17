@@ -34,7 +34,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
-  font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;overflow:hidden;overscroll-behavior:none}
+  font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",Roboto,"Segoe UI","Helvetica Neue",sans-serif;overflow:hidden;overscroll-behavior:none}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 input,textarea,select{font:inherit;color:inherit}
 .hidden{display:none!important}
@@ -355,7 +355,7 @@ input,textarea,select{font:inherit;color:inherit}
           <option value="120">2 hr before</option><option value="180">3 hr before</option>
         </select>
       </div>
-      <button class="row link-row time-only" id="pCalendar"><span data-icon="calendar"></span>Save & add to iPhone Calendar</button>
+      <button class="row link-row time-only" id="pCalendar"><span data-icon="calendar"></span>Save & add to Calendar</button>
     </div>
     <div class="group-foot" id="timeFoot"></div>
 
@@ -478,6 +478,11 @@ const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(3
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isAndroid = /Android/i.test(navigator.userAgent);
+// Android/Chrome can show its own install prompt; keep it for our Install button
+let installPrompt = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installPrompt = e; if (!current.tripId) renderHome(); });
+window.addEventListener("appinstalled", () => { installPrompt = null; renderHome(); });
 const isStandalone = window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
 
 const svg = p => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
@@ -623,8 +628,13 @@ function renderHome() {
   const upcoming = trips.filter(t => tripEnd(t) >= today);
   const past = trips.filter(t => tripEnd(t) < today).reverse();
   let html = "";
-  if (isIOS && !isStandalone && !localStorage.getItem("tripflow-hide-install")) {
-    html += `<div class="install"><div style="flex:1"><b>Install TripFlow</b>Tap the Share button ${ICON.share} in Safari, then <b style="display:inline">Add to Home Screen</b>. It will open like a normal app.</div>
+  if (!isStandalone && (isIOS || isAndroid) && !localStorage.getItem("tripflow-hide-install")) {
+    const how = isIOS
+      ? `Tap the Share button ${ICON.share} in Safari, then <b style="display:inline">Add to Home Screen</b>. It will open like a normal app.`
+      : installPrompt
+        ? `Add it to your home screen so it opens like a normal app.<br><button class="btn" id="installBtn" style="margin-top:8px;padding:8px 16px">Install app</button>`
+        : `In Chrome, tap the <b style="display:inline">⋮</b> menu, then <b style="display:inline">Add to Home screen</b> or <b style="display:inline">Install app</b>. It will open like a normal app.`;
+    html += `<div class="install"><div style="flex:1"><b>Install TripFlow</b>${how}</div>
       <button class="icon-btn" id="hideInstall" style="width:28px;height:28px;color:var(--muted)">${ICON.x}</button></div>`;
   }
   if (!trips.length) {
@@ -652,6 +662,7 @@ $("#homeBody").addEventListener("click", e => {
   const card = e.target.closest("[data-trip]"); if (card) return openTrip(card.dataset.trip);
   if (e.target.closest("#emptyNew")) return openTripEditor(null);
   if (e.target.closest("#sampleBtn")) return makeSample();
+  if (e.target.closest("#installBtn") && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; renderHome(); }); return; }
   if (e.target.closest("#hideInstall")) { localStorage.setItem("tripflow-hide-install", "1"); renderHome(); }
 });
 $("#newTripBtn").onclick = () => openTripEditor(null);
@@ -888,7 +899,7 @@ function updateTimeRows() {
   const on = $("#pHasTime").checked;
   $$(".time-only", $("#planSheet")).forEach(r => r.classList.toggle("hidden", !on));
   $("#timeFoot").textContent = !on ? "Turn on for anything you've already booked."
-    : "TripFlow shows reminders while it's open. For an alert even when it's closed, use Add to iPhone Calendar.";
+    : "TripFlow shows reminders while it's open. For an alert even when it's closed, use Add to Calendar.";
 }
 $("#pHasTime").addEventListener("change", updateTimeRows);
 $("#pRemind").addEventListener("change", () => {
@@ -1112,7 +1123,9 @@ function useCurrentLocation() {
   }, () => { renderLocResults(locList); locationDeniedToast(); }, { enableHighAccuracy: true, timeout: 12000 });
 }
 function locationDeniedToast() {
-  toast("<b>Location is off for TripFlow</b>Settings > Privacy & Security > Location Services > Safari Websites > While Using.", { duration: 6000 });
+  toast(isAndroid
+    ? "<b>Location is off for TripFlow</b>In Chrome, tap ⋮ > Settings > Site settings > Location, and allow this site."
+    : "<b>Location is off for TripFlow</b>Settings > Privacy & Security > Location Services > Safari Websites > While Using.", { duration: 6000 });
 }
 
 /* =====================================================================
@@ -1339,7 +1352,8 @@ function focusStop(item) {
 }
 function openDirections(item) {
   if (!item?.loc) return;
-  window.location.href = `https://maps.apple.com/?daddr=${item.loc.lat},${item.loc.lng}`;
+  // Opens the Google Maps app if it's installed (iPhone or Android), otherwise Google Maps in the browser
+  window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${item.loc.lat},${item.loc.lng}`;
 }
 $("#stopCards").addEventListener("click", e => {
   const day = currentTrip().days[current.dayIndex];
@@ -1564,7 +1578,13 @@ function addToCalendar(entries) {
   if (!valid.length) return toast("<b>Nothing to add</b>Give plans a booked time first.");
   const ics = buildICS(valid), name = valid.length === 1 ? `${valid[0].item.title}.ics` : `${valid[0].trip.name}.ics`;
   showActions(valid.length === 1 ? `Add "${valid[0].item.title}" to your calendar` : `Add ${valid.length} booked plans to your calendar`, [
-    { label: "Open in Calendar", fn: () => { window.location.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics); } },
+    isAndroid
+      ? { label: "Download to Calendar", fn: () => {
+          const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+          a.download = name.replace(/[\\/:*?"<>|]/g, ""); document.body.appendChild(a); a.click(); a.remove();
+          toast("<b>Calendar file downloaded</b>Tap it in your notifications or Downloads to add it to your calendar.", { duration: 6000 });
+        } }
+      : { label: "Open in Calendar", fn: () => { window.location.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics); } },
     { label: "Share calendar file…", fn: () => shareFile(new File([ics], name.replace(/[\\/:*?"<>|]/g, ""), { type: "text/calendar" })) },
   ]);
 }
@@ -1633,7 +1653,7 @@ async function shareTrip(trip, withQR) {
   const file = new File([json], `${safe}.tripflow.json`, { type: "application/json" });
   const start = parseISO(trip.start);
   const text = `Here's our itinerary for "${trip.name}" (${fmt(start, { day: "numeric", month: "short" })} to ${fmt(tripEnd(trip), { day: "numeric", month: "short", year: "numeric" })}) in TripFlow.\n\n` +
-    `1. Open ${appLink()} in Safari, tap Share, then Add to Home Screen.\n` +
+    `1. Open ${appLink()}\n   iPhone: in Safari, tap Share, then Add to Home Screen.\n   Android: in Chrome, tap ⋮, then Add to Home screen (or Install app).\n` +
     `2. Save the attached file to Files.\n` +
     `3. In TripFlow, tap ••• on My Trips, then "Import a shared trip or backup", and pick the file.\n\n` +
     `If I send an updated file later, import it the same way and your copy will update.`;
