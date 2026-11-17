@@ -500,6 +500,7 @@ const ICON = {
   map: svg('<path d="M9 4L3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/>'),
   eye: svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
   layers: svg('<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5" opacity=".5"/>'),
+  mapPin: svg('<path d="M3 7.5L9 5l6 2.5"/><path d="M3 7.5V20l6-2.5 6 2.5 6-2.5v-6"/><path d="M9 5v12.5M15 7.5V20"/><path d="M18.5 1.8a3.2 3.2 0 0 1 3.2 3.2c0 2.4-3.2 5.4-3.2 5.4s-3.2-3-3.2-5.4a3.2 3.2 0 0 1 3.2-3.2z" fill="currentColor" stroke="none"/><circle cx="18.5" cy="5" r="1.1" fill="var(--card)" stroke="none"/>'),
   chev: svg('<path d="M9 6l6 6-6 6"/>'),
   share: svg('<path d="M12 3v12M7.5 7.5L12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>'),
 };
@@ -900,7 +901,7 @@ function renderLocGroup() {
   g.innerHTML = `<div class="row col"><div class="loc-name">${esc(ed.loc.name)}</div>${ed.loc.address ? `<div class="muted small">${esc(ed.loc.address)}</div>` : ""}${ed.loc.exact ? `<div class="adjusted">${ICON.check} Exact spot set</div>` : ""}</div>
     <div class="mini-map" id="miniMap"></div>
     <button class="row link-row" data-loc="exact">${ICON.pin} Modify exact location</button>
-    <button class="row link-row" data-loc="change">Change location</button>
+    <button class="row link-row" data-loc="change">${ICON.mapPin} Change location</button>
     <button class="row danger" data-loc="remove">Remove location</button>`;
   if (!window.L) return;
   setTimeout(() => {
