@@ -224,6 +224,27 @@ input,textarea,select{font:inherit;color:inherit}
 .spinner{width:22px;height:22px;border-radius:50%;border:3px solid var(--sep);border-top-color:var(--accent);animation:spin .8s linear infinite;margin:auto}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* ---------- cities & hourly weather ---------- */
+.cities{margin:12px 0 2px;display:flex;flex-direction:column;gap:10px}
+.city-wx{background:var(--card2);border-radius:14px;padding:10px 0}
+.cw-head{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+.cw-name{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1;text-align:left}
+.cw-line1{display:flex;gap:6px;align-items:center;min-width:0}
+.cw-line1 b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cw-sum{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cw-hours{display:flex;gap:4px;overflow-x:auto;padding:0 8px;scrollbar-width:none;overscroll-behavior-x:contain;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.cw-hours::-webkit-scrollbar{display:none}
+.hr{flex:none;width:58px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0;border-radius:12px;scroll-snap-align:start}
+.hr.now{background:var(--accent-soft)}
+.hr .t{font-size:12px;color:var(--muted);font-weight:600}
+.hr.now .t{color:var(--accent)}
+.hr .wi{font-size:22px;line-height:1.1}
+.hr b{font-size:16px}
+.hr .rain{font-size:11px;color:#0a84ff;min-height:14px;font-weight:600}
+.cw-msg{padding:4px 12px;font-size:14px;color:var(--muted)}
+.add-city{display:inline-flex;align-self:flex-start;gap:5px;align-items:center;font-size:15px;font-weight:600;color:var(--accent);padding:2px 0}
+.add-city .ic{width:18px;height:18px}
+
 /* ---------- exact location picker ---------- */
 .pin-map-wrap{position:relative;flex:1;min-height:0}
 #pinMap{position:absolute;inset:0;background:var(--card2)}
@@ -394,6 +415,18 @@ input,textarea,select{font:inherit;color:inherit}
   <div class="search-wrap"><input type="search" id="locQuery" placeholder="Search places or addresses" autocomplete="off" enterkeyhint="search"></div>
   <div class="sheet-body" style="padding-top:8px"><div class="group" id="locResults"></div>
     <div class="group-foot" style="margin-top:10px">Search by OpenStreetMap (Photon).</div></div>
+</div>
+
+<!-- ============ ADD CITY ============ -->
+<div class="sheet" id="citySheet">
+  <header class="sheet-head">
+    <button class="text-btn" data-close>Cancel</button>
+    <div class="sheet-title">Add City</div>
+    <span style="min-width:72px"></span>
+  </header>
+  <div class="search-wrap"><input type="search" id="cityQuery" placeholder="Search for a city or town" autocomplete="off" enterkeyhint="search"></div>
+  <div class="sheet-body" style="padding-top:8px"><div class="group" id="cityResults"></div>
+    <div class="group-foot" style="margin-top:10px">Hourly forecasts by Open-Meteo, available up to 16 days ahead.</div></div>
 </div>
 
 <!-- ============ EXACT LOCATION ============ -->
@@ -746,13 +779,14 @@ function renderTrip() {
   pagesEl.innerHTML = trip.days.map((_, i) => dayPageHTML(trip, i)).join("");
   [...pagesEl.children].forEach((p, i) => { p.scrollTop = tops[i] || 0; initSortable(p, i); });
   pagesEl.scrollLeft = current.dayIndex * pagesEl.clientWidth;
+  fillWeatherAround(current.dayIndex);
 }
 function renderPage(i) {
   const old = pagesEl.children[i]; if (!old) return renderTrip();
   const top = old.scrollTop, tmp = document.createElement("div");
   tmp.innerHTML = dayPageHTML(currentTrip(), i);
   const el = tmp.firstElementChild; old.replaceWith(el); el.scrollTop = top; initSortable(el, i);
-  renderStrip();
+  renderStrip(); fillWeather(i);
 }
 function dayPageHTML(trip, i) {
   const day = trip.days[i], date = dayDate(trip, i), items = day.items;
@@ -762,6 +796,12 @@ function dayPageHTML(trip, i) {
       <div class="day-row1"><div><div class="day-num">Day ${i + 1} of ${trip.days.length}</div>
         <div class="day-date">${fmt(date, { weekday: "long", day: "numeric", month: "long" })}</div></div>
         ${sameDay(date, new Date()) ? '<span class="pill today">TODAY</span>' : ""}</div>
+      <div class="cities">${(day.cities || []).map((c, ci) => `<div class="city-wx">
+          <div class="cw-head"><button class="cw-name" data-action="city" data-day="${i}" data-ci="${ci}">
+              <span class="cw-line1">${flag(c.cc)}<b>${esc(c.name)}</b></span>
+              <span class="cw-sum" id="cws-${day.id}-${ci}">${esc(c.country || "")}</span></button></div>
+          <div class="cw-hours" id="cwh-${day.id}-${ci}"><div class="cw-msg">Loading forecast…</div></div></div>`).join("")}
+        <button class="add-city" data-action="addcity" data-day="${i}">${ICON.plus} Add city</button></div>
       <input class="theme-input" data-theme="${i}" placeholder="Theme for the day (optional)" value="${esc(day.title)}" enterkeyhint="done">
       ${items.length ? `<div class="muted small">${doneCount} of ${items.length} plans done</div>` : ""}
       <button class="complete-btn ${day.done ? "done" : ""}" data-action="complete" data-day="${i}">${day.done ? ICON.check + " Day completed" : "Complete day"}</button>
@@ -822,7 +862,7 @@ pagesEl.addEventListener("scroll", () => {
   scrollRaf = requestAnimationFrame(() => {
     const trip = currentTrip(); if (!trip) return;
     const i = clamp(Math.round(pagesEl.scrollLeft / pagesEl.clientWidth), 0, trip.days.length - 1);
-    if (i !== current.dayIndex) { current.dayIndex = i; centerChip(); updateMap(true); }
+    if (i !== current.dayIndex) { current.dayIndex = i; centerChip(); updateMap(true); fillWeatherAround(i); }
   });
 }, { passive: true });
 
@@ -848,6 +888,15 @@ pagesEl.addEventListener("click", e => {
       break;
     }
     case "add": openPlanEditor(di, null); break;
+    case "addcity": openCitySearch(di); break;
+    case "city": {
+      const day = trip.days[di], ci = +btn.dataset.ci, c = day.cities[ci];
+      showActions(`${c.name}${c.country ? ", " + c.country : ""}`, [
+        { label: "Add to the rest of the trip", fn: () => addCityToRest(di, c) },
+        { label: "Remove from this day", destructive: true, fn: () => { day.cities.splice(ci, 1); save(); renderPage(di); } },
+      ]);
+      break;
+    }
     case "edit": openPlanEditor(di, item); break;
     case "toggle": item.done = !item.done; save(); renderPage(di); if (di === current.dayIndex) updateMap(false); if (item.done) afterTick(di); break;
     case "qr": openQR(item); break;
@@ -1125,6 +1174,125 @@ function useCurrentLocation() {
     choosePlace(place);
   }, () => { renderLocResults(locList); locationDeniedToast(); }, { enableHighAccuracy: true, timeout: 12000 });
 }
+/* =====================================================================
+   CITIES & HOURLY WEATHER (Open-Meteo)
+   ===================================================================== */
+const flag = cc => cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map(ch => 127397 + ch.charCodeAt(0))) + " " : "";
+let cityDay = 0, cityTimer, cityToken = 0, cityList = [];
+function openCitySearch(di) {
+  cityDay = di; $("#cityQuery").value = ""; renderCityResults([]); openSheet("#citySheet");
+  setTimeout(() => $("#cityQuery").focus(), 340);
+}
+$("#cityQuery").addEventListener("input", () => { clearTimeout(cityTimer); cityTimer = setTimeout(searchCities, 300); });
+$("#cityQuery").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(cityTimer); searchCities(); e.target.blur(); } });
+async function searchCities() {
+  const q = $("#cityQuery").value.trim(), token = ++cityToken;
+  if (q.length < 2) return renderCityResults([]);
+  renderCityResults(null);
+  try {
+    const j = await (await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=10&language=en&format=json`)).json();
+    if (token === cityToken) renderCityResults((j.results || []).map(r => ({ id: r.id, name: r.name, country: r.country || "", cc: r.country_code || "", region: r.admin1 || "", lat: r.latitude, lng: r.longitude })));
+  } catch { if (token === cityToken) renderCityResults("error"); }
+}
+function renderCityResults(list) {
+  const box = $("#cityResults");
+  if (list === null) { box.innerHTML = `<div class="row"><div class="spinner"></div></div>`; return; }
+  if (list === "error") { box.innerHTML = `<div class="row muted">Search needs an internet connection.</div>`; return; }
+  cityList = list; const q = $("#cityQuery").value.trim();
+  box.innerHTML = list.length ? list.map((c, i) => `<button class="row col" data-c="${i}"><span class="result-name">${flag(c.cc)}${esc(c.name)}</span><span class="muted small">${esc([c.region, c.country].filter(Boolean).join(", "))}</span></button>`).join("")
+    : q.length >= 2 ? `<div class="row muted">No cities found for "${esc(q)}"</div>` : `<div class="row muted">Type a city name, e.g. Kyoto</div>`;
+}
+$("#cityResults").addEventListener("click", e => {
+  const b = e.target.closest("[data-c]"); if (!b) return;
+  const c = cityList[+b.dataset.c], trip = currentTrip(), day = trip.days[cityDay];
+  day.cities = day.cities || [];
+  if (!day.cities.some(x => x.id === c.id)) day.cities.push(c);
+  save(); closeSheet("#citySheet"); renderPage(cityDay);
+  if (cityDay + 1 < trip.days.length)
+    toast(`<b>${esc(c.name)} added</b>Staying a few days?`, { action: "Add to rest of trip", duration: 6000, onAction: () => addCityToRest(cityDay, c) });
+});
+function addCityToRest(di, c) {
+  const trip = currentTrip(); let n = 0;
+  trip.days.forEach((d, k) => { if (k > di) { d.cities = d.cities || []; if (!d.cities.some(x => x.id === c.id)) { d.cities.push({ ...c }); n++; } } });
+  save(); renderTrip(); toast(`<b>${esc(c.name)}</b>Added to ${n} more day${n === 1 ? "" : "s"}.`);
+}
+
+const wxCache = new Map(), wxPending = new Map();
+async function getForecast(c) {
+  const key = `${(+c.lat).toFixed(2)},${(+c.lng).toFixed(2)}`;
+  const hit = wxCache.get(key); if (hit && Date.now() - hit.at < 30 * 60000) return hit.data;
+  if (wxPending.has(key)) return wxPending.get(key);
+  const job = (async () => {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lng}&hourly=temperature_2m,precipitation_probability,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=16`;
+      const data = await (await fetch(url)).json();
+      if (!data.hourly) throw new Error("no data");
+      const rec = { at: Date.now(), data }; wxCache.set(key, rec);
+      try { localStorage.setItem("tripflow-wx:" + key, JSON.stringify(rec)); } catch {}
+      return data;
+    } catch (err) {
+      const saved = localStorage.getItem("tripflow-wx:" + key);   // last forecast we had, for offline
+      if (saved) { const rec = JSON.parse(saved); wxCache.set(key, { ...rec, at: 0 }); return rec.data; }
+      throw err;
+    } finally { wxPending.delete(key); }
+  })();
+  wxPending.set(key, job); return job;
+}
+function wxIcon(code, isDay) {
+  if (code === 0) return isDay ? "☀️" : "🌙";
+  if (code === 1) return isDay ? "🌤️" : "🌙";
+  if (code === 2) return isDay ? "⛅" : "☁️";
+  if (code === 3) return "☁️";
+  if (code === 45 || code === 48) return "🌫️";
+  if (code >= 51 && code <= 57) return isDay ? "🌦️" : "🌧️";
+  if ((code >= 61 && code <= 67)) return "🌧️";
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "🌨️";
+  if (code >= 80 && code <= 82) return isDay ? "🌦️" : "🌧️";
+  if (code >= 95) return "⛈️";
+  return "🌡️";
+}
+function fillWeatherAround(i) { [i, i - 1, i + 1].forEach(k => { if (k >= 0) fillWeather(k); }); }
+function fillWeather(di) {
+  const trip = currentTrip(), day = trip?.days[di]; if (!day?.cities?.length) return;
+  const dateStr = toISO(dayDate(trip, di));
+  day.cities.forEach(async (c, ci) => {
+    const box = document.getElementById(`cwh-${day.id}-${ci}`), sum = document.getElementById(`cws-${day.id}-${ci}`);
+    if (!box) return;
+    let data;
+    try { data = await getForecast(c); }
+    catch { box.innerHTML = `<div class="cw-msg">Forecast unavailable (no internet connection)</div>`; return; }
+    if (!box.isConnected) return;
+    // "now" in the city's own time zone
+    const local = new Date(Date.now() + data.utc_offset_seconds * 1000);
+    const nowDate = local.toISOString().slice(0, 10), nowHour = local.getUTCHours();
+    const H = data.hourly, times = H.time;
+    if (dateStr < nowDate) { box.innerHTML = `<div class="cw-msg">This day has passed.</div>`; return; }
+    const idx = []; times.forEach((t, k) => { if (t.startsWith(dateStr)) idx.push(k); });
+    if (!idx.length) {
+      box.innerHTML = `<div class="cw-msg">Forecast unavailable</div>`;
+      return;
+    }
+    const isToday = dateStr === nowDate;
+    const shown = isToday ? idx.filter(k => +times[k].slice(11, 13) >= nowHour) : idx;
+    box.innerHTML = shown.map(k => {
+      const h = +times[k].slice(11, 13), isNow = isToday && h === nowHour, p = H.precipitation_probability?.[k];
+      return `<div class="hr ${isNow ? "now" : ""}"><span class="t">${isNow ? "Now" : fmtTime(pad(h) + ":00")}</span>
+        <span class="wi">${wxIcon(H.weather_code[k], H.is_day[k])}</span><b>${Math.round(H.temperature_2m[k])}°</b>
+        <span class="rain">${p != null && p >= 10 ? "💧" + p + "%" : ""}</span></div>`;
+    }).join("");
+    // today starts at the current hour; other days start at 12am
+    box.scrollLeft = 0;
+    const d = data.daily.time.indexOf(dateStr);
+    if (d >= 0) {
+      const nowTemp = isToday ? `${Math.round(H.temperature_2m[shown[0]])}° now · ` : "";
+      sum.textContent = `${c.country ? c.country + " · " : ""}${nowTemp}H ${Math.round(data.daily.temperature_2m_max[d])}° L ${Math.round(data.daily.temperature_2m_min[d])}°`;
+    }
+  });
+}
+// keep "Now" moving along while the app is open
+setInterval(() => { if (current.tripId && !document.hidden) fillWeather(current.dayIndex); }, 5 * 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && current.tripId) fillWeather(current.dayIndex); });
+
 function locationDeniedToast() {
   toast(isAndroid
     ? "<b>Location is off for TripFlow</b>In Chrome, tap ⋮ > Settings > Site settings > Location, and allow this site."
