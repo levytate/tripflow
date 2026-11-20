@@ -298,8 +298,8 @@ input,textarea,select{font:inherit;color:inherit}
 .qr-view{position:fixed;inset:0;z-index:100;background:#fff;color:#000;display:flex;flex-direction:column}
 .qr-view .sheet-head{background:#fff;border-color:#e5e5ea;color:#000}
 .qr-pages{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
-.qr-page{flex:0 0 100%;scroll-snap-align:center;display:grid;place-items:center;padding:16px}
-.qr-page img{max-width:100%;max-height:100%;object-fit:contain;image-rendering:crisp-edges}
+.qr-page{flex:0 0 100%;width:100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;padding:16px;position:relative;overflow:hidden;touch-action:pan-x}
+.qr-page img{max-width:100%;max-height:100%;object-fit:contain;image-rendering:crisp-edges;transform-origin:0 0;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;will-change:transform}
 .qr-hint{text-align:center;color:#6e6e73;font-size:14px;padding:10px 16px calc(var(--sab) + 14px)}
 .qr-dots{display:flex;justify-content:center;gap:7px;padding-bottom:4px}
 .qr-dots i{width:7px;height:7px;border-radius:4px;background:#d1d1d6}
@@ -476,7 +476,7 @@ input,textarea,select{font:inherit;color:inherit}
   </header>
   <div class="qr-pages" id="qrPages"></div>
   <div class="qr-dots" id="qrDots"></div>
-  <div class="qr-hint">Tip: turn your screen brightness up for scanning. The screen stays awake while this is open.</div>
+  <div class="qr-hint">Pinch or double-tap to zoom. Turn your screen brightness up for scanning; the screen stays awake while this is open.</div>
 </div>
 
 <div class="gv hidden" id="guideView">
@@ -1614,7 +1614,7 @@ let wakeLock = null;
 async function openQR(item) {
   const urls = await Promise.all(item.images.map(imgURL));
   $("#qrTitle").textContent = item.title;
-  $("#qrPages").innerHTML = urls.map(u => `<div class="qr-page"><img src="${u}" alt="QR code"></div>`).join("");
+  $("#qrPages").innerHTML = urls.map(u => `<div class="qr-page"><img src="${u}" alt="QR code" draggable="false"></div>`).join("");
   $("#qrDots").innerHTML = urls.length > 1 ? urls.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("") : "";
   $("#qrView").classList.remove("hidden"); $("#qrPages").scrollLeft = 0;
   try { wakeLock = await navigator.wakeLock?.request("screen"); } catch {}
@@ -1622,8 +1622,9 @@ async function openQR(item) {
 $("#qrPages").addEventListener("scroll", () => {
   const p = $("#qrPages"), i = Math.round(p.scrollLeft / p.clientWidth);
   $$("#qrDots i").forEach((d, k) => d.classList.toggle("on", k === i));
+  if (zoom.img && zoom.img.closest(".qr-page") && zoom.img.closest(".qr-page") !== p.children[i]) resetZoom();
 }, { passive: true });
-$("#qrDone").onclick = () => { $("#qrView").classList.add("hidden"); wakeLock?.release?.().catch(() => {}); wakeLock = null; };
+$("#qrDone").onclick = () => { resetZoom(); zoom.img = null; $("#qrView").classList.add("hidden"); wakeLock?.release?.().catch(() => {}); wakeLock = null; };
 
 /* =====================================================================
    TOUR GUIDE NOTES VIEWER (pinch / double-tap zoom)
@@ -1667,7 +1668,7 @@ function applyZoom() {
   img.style.transform = `translate(${zoom.x}px,${zoom.y}px) scale(${zoom.s})`;
   const zoomed = zoom.s > 1.01;
   img.parentElement.style.touchAction = zoomed ? "none" : "pan-x";
-  $("#gvPages").style.overflowX = zoomed ? "hidden" : "auto";
+  const pager = img.closest(".gv-pages, .qr-pages"); if (pager) pager.style.overflowX = zoomed ? "hidden" : "auto";
 }
 function resetZoom() {
   if (zoom.img) { zoom.img.style.transition = "transform .2s"; zoom.s = 1; zoom.x = 0; zoom.y = 0; applyZoom(); const im = zoom.img; setTimeout(() => im.style.transition = "", 220); }
@@ -1683,9 +1684,10 @@ function zoomAround(px, py, newS) {
   const cx = (px - zoom.x) / zoom.s, cy = (py - zoom.y) / zoom.s;
   zoom.s = newS; zoom.x = px - cx * newS; zoom.y = py - cy * newS; clampPan(); applyZoom();
 }
-const gvPages = $("#gvPages");
-gvPages.addEventListener("pointerdown", e => {
-  const img = e.target.closest(".gv-page")?.querySelector("img"); if (!img) return;
+// pinch, drag and double-tap zoom, used by both the QR viewer and Tour Guide Notes
+function bindZoom(pager, pageSel) {
+pager.addEventListener("pointerdown", e => {
+  const img = e.target.closest(pageSel)?.querySelector("img"); if (!img) return;
   if (zoom.img !== img) { if (zoom.img) resetZoom(); zoom.img = img; }
   zoom.pts.set(e.pointerId, [e.clientX, e.clientY]);
   if (zoom.pts.size === 2) {
@@ -1694,10 +1696,10 @@ gvPages.addEventListener("pointerdown", e => {
     zoom.pan = null;
   } else if (zoom.pts.size === 1 && zoom.s > 1.01) {
     zoom.pan = { x: e.clientX, y: e.clientY, ox: zoom.x, oy: zoom.y };
-    try { gvPages.setPointerCapture(e.pointerId); } catch {}
+    try { pager.setPointerCapture(e.pointerId); } catch {}
   }
 });
-gvPages.addEventListener("pointermove", e => {
+pager.addEventListener("pointermove", e => {
   if (!zoom.pts.has(e.pointerId)) return;
   zoom.pts.set(e.pointerId, [e.clientX, e.clientY]);
   if (zoom.pinch && zoom.pts.size >= 2) {
@@ -1712,7 +1714,7 @@ gvPages.addEventListener("pointermove", e => {
     zoom.x = zoom.pan.ox + (e.clientX - zoom.pan.x); zoom.y = zoom.pan.oy + (e.clientY - zoom.pan.y); clampPan(); applyZoom();
   }
 }, { passive: false });
-function gvPointerEnd(e) {
+function zoomEnd(e) {
   const p = zoom.pts.get(e.pointerId); zoom.pts.delete(e.pointerId);
   if (zoom.pts.size < 2) zoom.pinch = null;
   if (zoom.pts.size === 0) zoom.pan = null;
@@ -1727,8 +1729,11 @@ function gvPointerEnd(e) {
     } else zoom.lastTap = now;
   }
 }
-gvPages.addEventListener("pointerup", gvPointerEnd);
-gvPages.addEventListener("pointercancel", gvPointerEnd);
+pager.addEventListener("pointerup", zoomEnd);
+pager.addEventListener("pointercancel", zoomEnd);
+}
+bindZoom($("#gvPages"), ".gv-page");
+bindZoom($("#qrPages"), ".qr-page");
 // stop iOS zooming the whole app when you pinch
 document.addEventListener("gesturestart", e => e.preventDefault());
 
