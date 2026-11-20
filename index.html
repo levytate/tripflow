@@ -215,6 +215,33 @@ input,textarea,select{font:inherit;color:inherit}
 .thumb img{width:100%;height:100%;object-fit:cover}
 .thumb-x{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:12px;background:rgba(0,0,0,.6);color:#fff;display:grid;place-items:center}
 .thumb-x .ic{width:14px;height:14px;stroke-width:3}
+.thumb img,.guide-thumb{cursor:pointer}
+.thumb-crop{position:absolute;left:4px;bottom:4px;width:24px;height:24px;border-radius:12px;background:rgba(0,0,0,.6);color:#fff;display:grid;place-items:center;pointer-events:none}
+.thumb-crop .ic{width:14px;height:14px}
+.guide-thumb-wrap{position:relative;flex:none;width:58px;height:58px}
+.guide-thumb-wrap .thumb-crop{left:3px;bottom:3px;width:20px;height:20px}
+.guide-thumb-wrap .thumb-crop .ic{width:12px;height:12px}
+.crop-view{position:fixed;inset:0;z-index:110;background:#000;color:#fff;display:flex;flex-direction:column}
+.crop-view .sheet-head{background:#000;border-color:#222;color:#fff}
+.crop-view .text-btn{color:#4da3ff}
+.crop-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none}
+#cropCanvas{position:absolute;display:block}
+.crop-box{position:absolute;box-shadow:0 0 0 9999px rgba(0,0,0,.6),inset 0 0 0 1px rgba(0,0,0,.45);outline:2px solid #fff;touch-action:none;cursor:move;
+  background-image:linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)),linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)),linear-gradient(90deg,rgba(255,255,255,.35),rgba(255,255,255,.35)),linear-gradient(90deg,rgba(255,255,255,.35),rgba(255,255,255,.35));
+  background-size:100% 1px,100% 1px,1px 100%,1px 100%;background-position:0 33.3%,0 66.6%,33.3% 0,66.6% 0;background-repeat:no-repeat}
+.ch{position:absolute;width:44px;height:44px;touch-action:none}
+.ch::after{content:"";position:absolute;width:22px;height:22px;border:0 solid #fff;filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9))}
+.ch[data-h=nw]{left:-22px;top:-22px;cursor:nwse-resize}.ch[data-h=nw]::after{left:19px;top:19px;border-left-width:4px;border-top-width:4px}
+.ch[data-h=ne]{right:-22px;top:-22px;cursor:nesw-resize}.ch[data-h=ne]::after{right:19px;top:19px;border-right-width:4px;border-top-width:4px}
+.ch[data-h=sw]{left:-22px;bottom:-22px;cursor:nesw-resize}.ch[data-h=sw]::after{left:19px;bottom:19px;border-left-width:4px;border-bottom-width:4px}
+.ch[data-h=se]{right:-22px;bottom:-22px;cursor:nwse-resize}.ch[data-h=se]::after{right:19px;bottom:19px;border-right-width:4px;border-bottom-width:4px}
+.ch[data-h=n],.ch[data-h=s]{left:50%;margin-left:-22px}.ch[data-h=n]{top:-22px;cursor:ns-resize}.ch[data-h=s]{bottom:-22px;cursor:ns-resize}
+.ch[data-h=e],.ch[data-h=w]{top:50%;margin-top:-22px}.ch[data-h=w]{left:-22px;cursor:ew-resize}.ch[data-h=e]{right:-22px;cursor:ew-resize}
+.ch[data-h=n]::after,.ch[data-h=s]::after{left:11px;width:22px;height:0;border-top-width:4px}.ch[data-h=n]::after{top:20px}.ch[data-h=s]::after{bottom:20px}
+.ch[data-h=e]::after,.ch[data-h=w]::after{top:11px;height:22px;width:0;border-left-width:4px}.ch[data-h=w]::after{left:20px}.ch[data-h=e]::after{right:20px}
+.crop-foot{display:flex;justify-content:space-around;padding:12px 16px calc(var(--sab) + 14px)}
+.crop-foot button{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;color:#fff;min-width:80px}
+.crop-foot .ic{width:24px;height:24px}
 .stepper{display:flex;align-items:center;gap:14px}
 .stepper button{width:38px;height:32px;border-radius:8px;background:var(--card2);font-size:20px;font-weight:600}
 .stepper b{min-width:28px;text-align:center}
@@ -494,6 +521,25 @@ input,textarea,select{font:inherit;color:inherit}
   </div>
 </div>
 
+<div class="crop-view hidden" id="cropView">
+  <header class="sheet-head">
+    <button class="text-btn" id="cropCancel" style="min-width:72px">Skip</button>
+    <div class="sheet-title" id="cropTitle">Crop</div>
+    <button class="text-btn bold" id="cropDone" style="justify-content:flex-end;min-width:72px">Done</button>
+  </header>
+  <div class="crop-stage" id="cropStage">
+    <canvas id="cropCanvas"></canvas>
+    <div class="crop-box" id="cropBox">
+      <div class="ch" data-h="nw"></div><div class="ch" data-h="n"></div><div class="ch" data-h="ne"></div><div class="ch" data-h="e"></div>
+      <div class="ch" data-h="se"></div><div class="ch" data-h="s"></div><div class="ch" data-h="sw"></div><div class="ch" data-h="w"></div>
+    </div>
+  </div>
+  <div class="crop-foot">
+    <button id="cropRotate"><span data-icon="rotate"></span>Rotate</button>
+    <button id="cropReset"><span data-icon="undo"></span>Reset</button>
+  </div>
+</div>
+
 <div class="action-backdrop hidden" id="actionSheet">
   <div class="action-panel"><div class="action-list" id="actionList"></div><button class="action-cancel" id="actionCancel">Cancel</button></div>
 </div>
@@ -542,6 +588,9 @@ const ICON = {
   layers: svg('<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5" opacity=".5"/>'),
   mapPin: svg('<path d="M3 7.5L9 5l6 2.5"/><path d="M3 7.5V20l6-2.5 6 2.5 6-2.5v-6"/><path d="M9 5v12.5M15 7.5V20"/><path d="M18.5 1.8a3.2 3.2 0 0 1 3.2 3.2c0 2.4-3.2 5.4-3.2 5.4s-3.2-3-3.2-5.4a3.2 3.2 0 0 1 3.2-3.2z" fill="currentColor" stroke="none"/><circle cx="18.5" cy="5" r="1.1" fill="var(--card)" stroke="none"/>'),
   arrow: svg('<path d="M20.5 3.5L3.5 10.6l7.4 2.5 2.5 7.4z" fill="currentColor" stroke-width="1.6"/>'),
+  crop: svg('<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>'),
+  rotate: svg('<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>'),
+  undo: svg('<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>'),
   chev: svg('<path d="M9 6l6 6-6 6"/>'),
   share: svg('<path d="M12 3v12M7.5 7.5L12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>'),
 };
@@ -988,9 +1037,11 @@ async function renderThumbs() {
   if (!ed.images.length) { wrap.hidden = true; wrap.innerHTML = ""; return; }
   const urls = await Promise.all(ed.images.map(imgURL));
   wrap.hidden = false;
-  wrap.innerHTML = ed.images.map((id, i) => `<div class="thumb"><img src="${urls[i]}" alt=""><button class="thumb-x" data-rm="${id}">${ICON.x}</button></div>`).join("");
+  wrap.innerHTML = ed.images.map((id, i) => `<div class="thumb"><img src="${urls[i]}" alt="Tap to crop" data-crop="${id}"><span class="thumb-crop">${ICON.crop}</span><button class="thumb-x" data-rm="${id}">${ICON.x}</button></div>`).join("");
 }
 $("#pThumbs").addEventListener("click", e => {
+  const c = e.target.closest("[data-crop]");
+  if (c) return recrop(c.dataset.crop, nid => { ed.images[ed.images.indexOf(c.dataset.crop)] = nid; renderThumbs(); });
   const b = e.target.closest("[data-rm]"); if (!b) return;
   const id = b.dataset.rm; ed.images = ed.images.filter(x => x !== id);
   if (!ed.original.includes(id)) deleteImage(id);
@@ -998,24 +1049,121 @@ $("#pThumbs").addEventListener("click", e => {
 });
 $("#pFiles").addEventListener("change", async e => {
   const files = [...e.target.files]; e.target.value = "";
-  for (const f of files) {
-    try { const blob = await compressImage(f); const id = "img_" + uid(); await DB.put("images", id, blob); ed.images.push(id); }
-    catch { toast("<b>Couldn't add that image</b>"); }
+  for (const [n, f] of files.entries()) {
+    try {
+      let blob = await compressImage(f);
+      const cropped = await openCropper(blob, { title: files.length > 1 ? `Crop ${n + 1} of ${files.length}` : "Crop", cancel: "Skip" });
+      if (cropped) blob = cropped;
+      const id = "img_" + uid(); await DB.put("images", id, blob); ed.images.push(id); renderThumbs();
+    } catch { toast("<b>Couldn't add that image</b>"); }
   }
   renderThumbs();
 });
+/* ---- Crop & rotate ---- */
+let cropState = null;
+const CROP_MIN = 40;
+async function recrop(id, onNewId) {
+  let blob; try { blob = await DB.get("images", id); } catch {}
+  if (!blob) return;
+  const cropped = await openCropper(blob, { title: "Crop", cancel: "Cancel" });
+  if (!cropped) return;
+  const nid = "img_" + uid(); await DB.put("images", nid, cropped);
+  if (!ed.originalAll.includes(id)) deleteImage(id);   // originals are only removed when you save
+  onNewId(nid);
+}
+function openCropper(blob, opts = {}) {
+  return new Promise(async resolve => {
+    const url = URL.createObjectURL(blob);
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; }).catch(() => null);
+    URL.revokeObjectURL(url);
+    if (!img) return resolve(null);
+    const src = document.createElement("canvas"); src.width = img.naturalWidth; src.height = img.naturalHeight;
+    src.getContext("2d").drawImage(img, 0, 0);
+    cropState = { orig: src, src, resolve, box: null, changed: false, drag: null };
+    $("#cropTitle").textContent = opts.title || "Crop";
+    $("#cropCancel").textContent = opts.cancel || "Cancel";
+    $("#cropView").classList.remove("hidden");
+    requestAnimationFrame(() => layoutCrop(true));
+  });
+}
+function layoutCrop(resetBox) {
+  const st = cropState; if (!st) return;
+  const stage = $("#cropStage"), cv = $("#cropCanvas"), pad = 24;
+  const W = stage.clientWidth - pad * 2, H = stage.clientHeight - pad * 2;
+  st.scale = Math.min(W / st.src.width, H / st.src.height, 4);
+  st.dw = st.src.width * st.scale; st.dh = st.src.height * st.scale;
+  st.ox = (stage.clientWidth - st.dw) / 2; st.oy = (stage.clientHeight - st.dh) / 2;
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  cv.width = Math.round(st.dw * dpr); cv.height = Math.round(st.dh * dpr);
+  Object.assign(cv.style, { left: st.ox + "px", top: st.oy + "px", width: st.dw + "px", height: st.dh + "px" });
+  cv.getContext("2d").drawImage(st.src, 0, 0, cv.width, cv.height);
+  if (resetBox || !st.box) st.box = { x: 0, y: 0, w: st.dw, h: st.dh };
+  paintCropBox();
+}
+function paintCropBox() {
+  const { box, ox, oy } = cropState;
+  Object.assign($("#cropBox").style, { left: ox + box.x + "px", top: oy + box.y + "px", width: box.w + "px", height: box.h + "px" });
+}
+function finishCrop(result) {
+  const st = cropState; if (!st) return;
+  $("#cropView").classList.add("hidden"); cropState = null; st.resolve(result);
+}
+const cropBox = $("#cropBox");
+cropBox.addEventListener("pointerdown", e => {
+  const st = cropState; if (!st) return;
+  e.preventDefault();
+  st.drag = { h: e.target.dataset.h || "move", x: e.clientX, y: e.clientY, b: { ...st.box }, id: e.pointerId };
+  try { cropBox.setPointerCapture(e.pointerId); } catch {}
+});
+cropBox.addEventListener("pointermove", e => {
+  const st = cropState; if (!st?.drag || e.pointerId !== st.drag.id) return;
+  const dx = e.clientX - st.drag.x, dy = e.clientY - st.drag.y, b = { ...st.drag.b }, W = st.dw, H = st.dh, h = st.drag.h;
+  if (h === "move") { b.x = clamp(b.x + dx, 0, W - b.w); b.y = clamp(b.y + dy, 0, H - b.h); }
+  else {
+    if (h.includes("w")) { const nx = clamp(b.x + dx, 0, b.x + b.w - CROP_MIN); b.w += b.x - nx; b.x = nx; }
+    if (h.includes("e")) b.w = clamp(b.w + dx, CROP_MIN, W - b.x);
+    if (h.includes("n")) { const ny = clamp(b.y + dy, 0, b.y + b.h - CROP_MIN); b.h += b.y - ny; b.y = ny; }
+    if (h.includes("s")) b.h = clamp(b.h + dy, CROP_MIN, H - b.y);
+  }
+  st.box = b; st.changed = true; paintCropBox();
+});
+const endCropDrag = () => { if (cropState) cropState.drag = null; };
+cropBox.addEventListener("pointerup", endCropDrag);
+cropBox.addEventListener("pointercancel", endCropDrag);
+$("#cropCancel").onclick = () => finishCrop(null);
+$("#cropReset").onclick = () => { if (!cropState) return; cropState.src = cropState.orig; cropState.changed = false; layoutCrop(true); };
+$("#cropRotate").onclick = () => {
+  const st = cropState; if (!st) return;
+  const r = document.createElement("canvas"); r.width = st.src.height; r.height = st.src.width;
+  const ctx = r.getContext("2d"); ctx.translate(r.width, 0); ctx.rotate(Math.PI / 2); ctx.drawImage(st.src, 0, 0);
+  st.src = r; st.changed = true; layoutCrop(true);
+};
+$("#cropDone").onclick = () => {
+  const st = cropState; if (!st) return;
+  if (!st.changed) return finishCrop(null);   // nothing changed: keep the image as it was
+  const s = st.scale, b = st.box;
+  const sx = Math.round(b.x / s), sy = Math.round(b.y / s);
+  const sw = Math.max(1, Math.min(st.src.width - sx, Math.round(b.w / s))), sh = Math.max(1, Math.min(st.src.height - sy, Math.round(b.h / s)));
+  const out = document.createElement("canvas"); out.width = sw; out.height = sh;
+  const ctx = out.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, sw, sh);
+  ctx.drawImage(st.src, sx, sy, sw, sh, 0, 0, sw, sh);
+  out.toBlob(blob => finishCrop(blob), "image/jpeg", 0.93);
+};
+window.addEventListener("resize", () => { if (cropState) layoutCrop(true); });
 function edAllIds() { return [...ed.images, ...ed.guides.map(g => g.id)]; }
 async function renderGuides() {
   const box = $("#pGuides");
   $("#addGuideLabel").textContent = ed.guides.length ? "Add another" : "Add a map or photo";
   const urls = await Promise.all(ed.guides.map(g => imgURL(g.id)));
-  box.innerHTML = ed.guides.map((g, i) => `<div class="guide-row"><img class="guide-thumb" src="${urls[i]}" alt="">
+  box.innerHTML = ed.guides.map((g, i) => `<div class="guide-row"><span class="guide-thumb-wrap"><img class="guide-thumb" src="${urls[i]}" alt="Tap to crop" data-gcrop="${i}"><span class="thumb-crop">${ICON.crop}</span></span>
     <input class="guide-cap" data-gcap="${i}" value="${esc(g.caption)}" placeholder="Note, e.g. Room 34 or Level 2" enterkeyhint="done">
     <button class="guide-x" data-grm="${g.id}" aria-label="Remove">${ICON.x}</button></div>`).join("");
 }
 $("#pGuides").addEventListener("input", e => { const inp = e.target.closest("[data-gcap]"); if (inp) ed.guides[+inp.dataset.gcap].caption = inp.value; });
 $("#pGuides").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("[data-gcap]")) e.target.blur(); });
 $("#pGuides").addEventListener("click", e => {
+  const c = e.target.closest("[data-gcrop]");
+  if (c) { const g = ed.guides[+c.dataset.gcrop]; return recrop(g.id, nid => { g.id = nid; renderGuides(); }); }
   const b = e.target.closest("[data-grm]"); if (!b) return;
   const id = b.dataset.grm; ed.guides = ed.guides.filter(g => g.id !== id);
   if (!ed.originalAll.includes(id)) deleteImage(id);
@@ -1023,9 +1171,13 @@ $("#pGuides").addEventListener("click", e => {
 });
 $("#pGuideFiles").addEventListener("change", async e => {
   const files = [...e.target.files]; e.target.value = "";
-  for (const f of files) {
-    try { const blob = await compressImage(f, 3200); const id = "img_" + uid(); await DB.put("images", id, blob); ed.guides.push({ id, caption: "", seen: false }); }
-    catch { toast("<b>Couldn't add that image</b>"); }
+  for (const [n, f] of files.entries()) {
+    try {
+      let blob = await compressImage(f, 3200);
+      const cropped = await openCropper(blob, { title: files.length > 1 ? `Crop ${n + 1} of ${files.length}` : "Crop", cancel: "Skip" });
+      if (cropped) blob = cropped;
+      const id = "img_" + uid(); await DB.put("images", id, blob); ed.guides.push({ id, caption: "", seen: false }); renderGuides();
+    } catch { toast("<b>Couldn't add that image</b>"); }
   }
   renderGuides();
 });
